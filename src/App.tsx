@@ -479,6 +479,7 @@ export default function AmanahApp() {
   const [memberProfile, setMemberProfile] = useState<{
     id: string; member_number: string; full_name: string; role: string; account_status: string;
   } | null>(null);
+  const [hasAuthenticatedSession, setHasAuthenticatedSession] = useState(false);
   const [activationRole, setActivationRole] = useState<'distributor' | 'mobile_stockist' | 'branch_operator' | 'manager'>('distributor');
   const [sponsorProfileId, setSponsorProfileId] = useState('');
   const [generatedActivation, setGeneratedActivation] = useState<{ activation_code: string; assigned_role: string; expires_at: string } | null>(null);
@@ -629,6 +630,7 @@ export default function AmanahApp() {
     const profile = await loadMemberProfile(userData.user.id);
     if (!profile) throw new Error('Registration was processed, but the member profile could not be loaded. Contact an administrator.');
     setMemberProfile(profile);
+    setHasAuthenticatedSession(true);
     setActiveView('portal');
     setAuthFeedback({ loading: false, status: 'configured_ready', message: `Enrollment completed. Your assigned role is ${profile.role.replaceAll('_', ' ')}. Member number: ${profile.member_number}.` });
   };
@@ -639,11 +641,16 @@ export default function AmanahApp() {
       setAuthFeedback({ loading: false, status: 'not_connected', message: 'The website build is missing its Supabase configuration. The site administrator must set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in the deployment environment.' });
       return;
     }
-    if (!authForm.email.trim()) {
+    const { data: currentSessionData } = await supabase.auth.getSession();
+    const sessionAvailable = Boolean(currentSessionData.session);
+    setHasAuthenticatedSession(sessionAvailable);
+    const email = authForm.email.trim() || currentSessionData.session?.user.email || '';
+    if (!email) {
       setAuthFeedback({ loading: false, status: 'validation_error', message: 'Enter the email address registered to your account.' });
       return;
     }
-    if (authMode !== 'forgot' && authForm.password.length < 6) {
+    if (authForm.email !== email) setAuthForm((previous) => ({ ...previous, email }));
+    if ((authMode === 'login' || (authMode === 'register' && !sessionAvailable)) && authForm.password.length < 6) {
       setAuthFeedback({ loading: false, status: 'validation_error', message: 'Password must be at least 6 characters long.' });
       return;
     }
@@ -655,7 +662,7 @@ export default function AmanahApp() {
     setAuthFeedback({ loading: true, status: 'idle', message: '' });
     try {
       if (authMode === 'forgot') {
-        const { error } = await supabase.auth.resetPasswordForEmail(authForm.email.trim(), {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}${import.meta.env.BASE_URL}`,
         });
         if (error) throw error;
@@ -664,8 +671,7 @@ export default function AmanahApp() {
       }
 
       if (authMode === 'register') {
-        const { data: currentSession } = await supabase.auth.getSession();
-        if (!currentSession.session) {
+        if (!sessionAvailable) {
           const { data, error } = await supabase.auth.signUp({
             email: authForm.email.trim(),
             password: authForm.password,
@@ -673,23 +679,28 @@ export default function AmanahApp() {
           });
           if (error) throw error;
           if (!data.session) {
+            setHasAuthenticatedSession(false);
             setAuthFeedback({ loading: false, status: 'configured_ready', message: 'Account created. Check your email and confirm your address. Then return to this page, sign in with your email and password, and complete enrollment using your activation code. Your role will be assigned from that code.' });
             setAuthMode('login');
             return;
           }
         }
+        setHasAuthenticatedSession(true);
         await completeActivation();
         return;
       }
 
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: authForm.email.trim(),
+        email,
         password: authForm.password,
       });
       if (error) throw error;
       const profile = await loadMemberProfile(data.user.id);
+      setHasAuthenticatedSession(true);
       if (!profile) {
         setMemberProfile(null);
+        setAuthForm((previous) => ({ ...previous, email: data.user.email || email }));
+        setActiveView('portal');
         setAuthMode('register');
         setAuthFeedback({ loading: false, status: 'configured_ready', message: 'Your email is authenticated, but enrollment is not complete. Enter your Admin-issued activation code and full legal name to finish creating your member profile.' });
         return;
@@ -734,6 +745,7 @@ export default function AmanahApp() {
   const handleSignOut = async () => {
     if (supabase) await supabase.auth.signOut();
     setMemberProfile(null);
+    setHasAuthenticatedSession(false);
     setGeneratedActivation(null);
     setAuthFeedback({ loading: false, status: 'idle', message: '' });
   };
@@ -743,14 +755,26 @@ export default function AmanahApp() {
     let active = true;
     supabase.auth.getUser().then(async ({ data, error }) => {
       if (!active || error || !data.user) return;
+      setHasAuthenticatedSession(true);
+      setAuthForm((previous) => ({ ...previous, email: data.user.email || previous.email }));
       try {
         const profile = await loadMemberProfile(data.user.id);
-        if (active && profile?.account_status === 'active') {
+        if (!active) return;
+        if (profile?.account_status === 'active') {
           setMemberProfile(profile);
           setActiveView('portal');
+        } else if (!profile) {
+          setAuthMode('register');
+          setActiveView('portal');
+          setAuthFeedback({ loading: false, status: 'configured_ready', message: 'You are signed in, but your member profile is not enrolled yet. Enter your full legal name and Admin-issued activation code to complete enrollment.' });
+        } else {
+          setAuthFeedback({ loading: false, status: 'validation_error', message: 'Your member profile is not active. Contact an AMANAH administrator.' });
         }
-      } catch {
-        // A valid Auth session without a member profile remains in enrollment flow.
+      } catch (profileError) {
+        if (active) {
+          const message = profileError instanceof Error ? profileError.message : 'Unable to verify your member profile.';
+          setAuthFeedback({ loading: false, status: 'validation_error', message: `Your account is signed in, but the member profile could not be checked: ${message}` });
+        }
       }
     });
     return () => { active = false; };
@@ -1120,7 +1144,7 @@ export default function AmanahApp() {
                   </div>
                 </div>
 
-                {authMode !== 'forgot' && (
+                {(authMode === 'login' || (authMode === 'register' && !hasAuthenticatedSession)) && (
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600">
