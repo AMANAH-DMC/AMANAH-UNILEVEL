@@ -133,9 +133,26 @@ begin
 end;
 $$;
 
+create or replace function public.admin_revoke_activation_code(p_activation_code_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $
+begin
+  if not public.amanah_is_active_admin() then
+    raise exception 'Administrator access required' using errcode = '42501';
+  end if;
+
+  return public.revoke_activation_code(p_activation_code_id);
+end;
+$;
+
 revoke all on function public.get_admin_activation_codes(text, text, text, integer, integer) from public, anon;
 revoke all on function public.get_admin_activation_events(integer) from public, anon;
+revoke all on function public.admin_revoke_activation_code(uuid) from public, anon;
 grant execute on function public.get_admin_activation_codes(text, text, text, integer, integer) to authenticated;
 grant execute on function public.get_admin_activation_events(integer) to authenticated;
+grant execute on function public.admin_revoke_activation_code(uuid) to authenticated;
 
 commit;
