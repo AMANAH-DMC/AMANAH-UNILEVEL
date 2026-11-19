@@ -6,7 +6,7 @@ AMANAH UNILEVEL is a centralized, role-based management platform for operating a
 
 The compensation model is Unilevel only. Each member is linked to one direct sponsor/upline for genealogy purposes. Members may sponsor multiple direct frontline members (width); eligible activity may be organized into successive levels (depth) according to the company's approved plan. This system is not designed around binary left/right legs, matrix placement, or forced matrix spillover.
 
-**Important:** the number of payable levels, qualifying sales, commission rates, payout schedule, returns treatment, eligibility rules, and all other compensation formulas are intentionally not defined here. They must be supplied and approved by AMANAH before commission calculations or payouts are activated.
+**Commission plan:** the master development specification now defines a 10-level Unilevel plan and base rates. Qualification details, payout timing, returns treatment, and certain positional-commission behavior remain subject to configuration and approval before activation.
 
 ## Account roles and intended access
 
@@ -53,10 +53,60 @@ The website currently contains a **front-end role selection/sign-in interface** 
 Before enabling production calculations or transaction workflows, AMANAH must approve:
 
 - Membership enrollment requirements, unique ID format, sponsor validation, and account activation/suspension rules.
-- Unilevel payable depth, qualifying volume definitions, commission percentages or fixed amounts by level, qualification requirements, caps, and payout timing.
+- Qualification requirements, qualifying volume definitions, caps, payout timing, and returns/refunds treatment for the approved 10-level Unilevel plan.
 - Treatment of personal purchases, retail sales, discounts, refunds, cancelled orders, chargebacks, and stockist purchases.
 - Product price lists, stock ownership, transfer rules, branch/stockist territories, and inventory adjustment approvals.
 - Which manager oversees each branch/territory and what records each role may view or edit.
 - Approval thresholds, audit retention, privacy policy, and dispute/correction procedures.
 
 These are policy inputs, not assumptions. The software should make them configurable with version history and effective dates after approval.
+
+
+## Confirmed rules from the AMANAH master development specification
+
+These values are sourced from the master specification and must be implemented server-side with versioned rules. They supersede the earlier statement that payable depth and base Unilevel rates were not yet defined.
+
+### Unilevel genealogy and commission
+
+- One direct sponsor per member; unlimited direct referrals (network width).
+- Commission depth is exactly 10 levels.
+- Levels 1–5: 12.5% of eligible product PV.
+- Levels 6–10: 7.5% of eligible product PV.
+- PV conversion: 1 PV = PHP 1.50.
+- Formula: commission in pesos = product PV × level percentage × PHP 1.50.
+- Example: 20 PV at 12.5% = PHP 3.75; 20 PV at 7.5% = PHP 2.25.
+- Calculate from the purchased product's PV, never from retail/selling price.
+- Do not pay an unqualified upline. Apply the approved qualification and no-skipping rules.
+- Store transaction, buyer, sponsor/recipient, product, PV snapshot, network level, applied rate, peso amount, transaction date, qualification result, and payment status with each commission.
+- Commission processing must be idempotent and atomic to prevent duplicate generation or payout.
+
+### Product PV configuration
+
+| Product | Product PV | Unilevel eligible | Rank qualification eligible |
+|---|---:|---|---|
+| Spirulina | 20 | Yes | Yes |
+| Serpentina | 25 | Yes | Yes |
+| Herbal Oil | 15 | Yes | Yes |
+| Herbal Rub | 10 | Yes | Yes |
+| Baskug Coffee | 30 | Yes | Yes |
+| Barakah Coffee | 30 | Yes | Yes |
+| Max C Pro | 40 | Yes | Yes |
+| Glutagen Cee | 35 | Yes | Yes |
+| Distributor Bundle | 50 | No | Yes |
+| Mobile Stockist Bundle | 100 | No | Yes |
+
+Keep `product_pv`, `unilevel_eligible`, and `rank_qualification_eligible` independent. Persist the product PV and rule version used by each historical transaction so later catalog edits do not rewrite past calculations.
+
+### Promotional ranks
+
+- Ranks: Regular Member, Junior Marketing Officer (JMO), Senior Marketing Officer (SMO).
+- JMO additional positional commission: 1.3%.
+- SMO additional positional commission: 1.3%.
+- Keep positional commission processing separate from the Unilevel engine.
+- Do not invent JMO/SMO qualification thresholds. Keep thresholds configurable and inactive until approved.
+- For SMO, make cumulative versus replacement positional-commission behavior configurable; do not choose a default without approval.
+- Preserve rank qualification and promotion history.
+
+### Still requiring explicit business configuration
+
+The master specification does not provide JMO/SMO qualification thresholds, the SMO cumulative/replacement decision, full qualification definitions for uplines, returns/refunds/chargeback treatment, payout schedule, caps (if any), and operational approval thresholds. Keep these inactive or configurable until approved. Do not activate live commission payouts merely because the base rates are known.
