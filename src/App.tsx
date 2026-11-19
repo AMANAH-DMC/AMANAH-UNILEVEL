@@ -391,6 +391,21 @@ const MEDIA_ITEMS: MediaItem[] = [
 ];
 
 // ============================================================================
+ // AMANAH UNILEVEL ROLE CATALOG
+ // Role choice is a sign-in context only. The trusted account role must be
+ // assigned and verified by the backend; this selector never grants access.
+ // ============================================================================
+const UNILEVEL_ROLES = [
+  { id: 'distributor', label: 'Distributor', description: 'Personal profile, sponsor and downline genealogy, eligible sales volume, order history, and commission statements.' },
+  { id: 'mobile_stockist', label: 'Mobile Stockist', description: 'Assigned stock, inventory movements, replenishment requests, and product handovers within an authorized territory.' },
+  { id: 'branch_operator', label: 'Branch Operator', description: 'Branch sales and order processing, member assistance, stock receiving, and branch-level daily reconciliation.' },
+  { id: 'manager', label: 'Manager', description: 'Supervised branch and team performance, operational approvals, stock oversight, and management reports.' },
+  { id: 'admin', label: 'Admin', description: 'Authorized user and role administration, system configuration, audit monitoring, and controlled master data.' },
+] as const;
+
+type UnilevelRoleId = typeof UNILEVEL_ROLES[number]['id'];
+
+// ============================================================================
 // MAIN APPLICATION COMPONENT — AMANAH PROJECT SYSTEM
 // ============================================================================
 
@@ -442,6 +457,7 @@ export default function AmanahApp() {
 
   // Supabase-Ready Login / Registration Portal State
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot'>('login');
+  const [selectedRole, setSelectedRole] = useState<UnilevelRoleId>('distributor');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [authForm, setAuthForm] = useState({
     fullName: '',
@@ -452,7 +468,7 @@ export default function AmanahApp() {
   });
   const [authFeedback, setAuthFeedback] = useState<{
     loading: boolean;
-    status: 'idle' | 'configured_ready' | 'validation_error';
+    status: 'idle' | 'configured_ready' | 'validation_error' | 'not_connected';
     message: string;
   }>({
     loading: false,
@@ -599,25 +615,12 @@ export default function AmanahApp() {
       return;
     }
 
-    setAuthFeedback({ loading: true, status: 'idle', message: '' });
-
-    // Architectural integration point for Supabase Client:
-    // const { data, error } = await supabase.auth.signInWithPassword({
-    //   email: authForm.email,
-    //   password: authForm.password,
-    // });
-    setTimeout(() => {
-      setAuthFeedback({
-        loading: false,
-        status: 'configured_ready',
-        message:
-          authMode === 'login'
-            ? 'Amanah Portal credentials validated. Connect your VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables in src/lib/supabaseClient.ts to activate live member session tokens and dashboard routing.'
-            : authMode === 'register'
-            ? 'Member enrollment payload validated. Connect Supabase Auth (supabase.auth.signUp) to dispatch verification emails and provision new Amanah Project System profiles.'
-            : 'Password recovery payload validated. Connect Supabase Auth (supabase.auth.resetPasswordForEmail) to send secure reset links.',
-      });
-    }, 550);
+    setAuthFeedback({
+      loading: false,
+      status: 'not_connected',
+      message:
+        'The multi-role sign-in screen is prepared, but live authentication is not connected yet. Your selected role is a requested access context only; the server must verify the account role and permissions before opening any dashboard. No credentials have been authenticated or stored.',
+    });
   };
 
   const filteredMedia =
@@ -858,7 +861,7 @@ export default function AmanahApp() {
                       : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
-                  Member Sign In
+                  Role-Based Sign In
                 </button>
                 <button
                   type="button"
@@ -876,6 +879,30 @@ export default function AmanahApp() {
                 </button>
               </div>
 
+              {authMode !== 'forgot' && (
+                <div className="mb-6 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
+                  <label htmlFor="amanah-role" className="block text-xs font-bold uppercase tracking-wider text-emerald-950 mb-2">
+                    Select your account access
+                  </label>
+                  <select
+                    id="amanah-role"
+                    value={selectedRole}
+                    onChange={(e) => setSelectedRole(e.target.value as UnilevelRoleId)}
+                    className="w-full rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20"
+                  >
+                    {UNILEVEL_ROLES.map((role) => (
+                      <option key={role.id} value={role.id}>{role.label}</option>
+                    ))}
+                  </select>
+                  <p className="mt-2 text-xs leading-relaxed text-emerald-900/80">
+                    {UNILEVEL_ROLES.find((role) => role.id === selectedRole)?.description}
+                  </p>
+                  <p className="mt-2 text-[11px] text-slate-500">
+                    Access is determined by your verified account permissions, not by this selection.
+                  </p>
+                </div>
+              )}
+
               <div className="mb-6">
                 <h2 className="text-2xl font-bold text-slate-900">
                   {authMode === 'login' && 'Sign in to Amanah System'}
@@ -884,7 +911,7 @@ export default function AmanahApp() {
                 </h2>
                 <p className="text-sm text-slate-500 mt-1">
                   {authMode === 'login' &&
-                    'Enter your registered email or Amanah Member Code to continue.'}
+                    'Enter your registered email or account ID and choose your assigned access role.'}
                   {authMode === 'register' &&
                     'Join our ethical wellness network and community stewardship program.'}
                   {authMode === 'forgot' &&
@@ -897,6 +924,8 @@ export default function AmanahApp() {
                   className={`mb-6 p-4 rounded-xl text-sm border flex items-start gap-3 ${
                     authFeedback.status === 'validation_error'
                       ? 'bg-red-50 border-red-200 text-red-800'
+                      : authFeedback.status === 'not_connected'
+                      ? 'bg-amber-50 border-amber-200 text-amber-900'
                       : 'bg-emerald-50 border-emerald-200 text-emerald-900'
                   }`}
                 >
@@ -905,6 +934,8 @@ export default function AmanahApp() {
                     <p className="font-semibold mb-0.5">
                       {authFeedback.status === 'validation_error'
                         ? 'Input Required'
+                        : authFeedback.status === 'not_connected'
+                        ? 'Authentication Not Connected'
                         : 'Supabase Integration Ready'}
                     </p>
                     <p className="leading-relaxed opacity-90">{authFeedback.message}</p>
@@ -1056,7 +1087,7 @@ export default function AmanahApp() {
                       onClick={() => setAuthMode('register')}
                       className="font-semibold text-emerald-800 hover:underline"
                     >
-                      Enroll as a Member
+                      Request Member Enrollment
                     </button>
                   </p>
                 ) : (
