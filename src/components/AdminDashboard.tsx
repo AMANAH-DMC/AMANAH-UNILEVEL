@@ -60,7 +60,10 @@ export default function AdminDashboard({
   const [section, setSection] = useState('overview');
   const [summary, setSummary] = useState<Summary>(emptySummary);
   const [members, setMembers] = useState<MemberRow[]>([]);
+  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [memberOffset, setMemberOffset] = useState(0);
   const [hasMoreMembers, setHasMoreMembers] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -83,8 +86,10 @@ export default function AdminDashboard({
     setLoading(true);
     setError('');
     try {
-      const { data, error: rpcError } = await supabase.rpc('get_admin_members', {
+      const { data, error: rpcError } = await supabase.rpc('get_admin_members_filtered', {
         p_search: term.trim() || null,
+        p_role: roleFilter || null,
+        p_status: statusFilter || null,
         p_limit: pageSize + 1,
         p_offset: nextOffset,
       });
@@ -98,7 +103,7 @@ export default function AdminDashboard({
     } finally {
       setLoading(false);
     }
-  }, [pageSize, search]);
+  }, [pageSize, search, roleFilter, statusFilter]);
 
   const refreshDashboard = useCallback(async () => {
     setLoading(true);
@@ -231,7 +236,7 @@ export default function AdminDashboard({
             {section === 'members' && (
               <article className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
                 <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-                  <div className="relative flex-1 max-w-xl"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void loadMembers(0, search); }} placeholder="Search member name or ID" className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-emerald-700" /></div>
+                  <div className="flex flex-1 flex-col sm:flex-row gap-2 max-w-4xl"><div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" /><input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { setMemberOffset(0); setSearch(searchInput); } }} placeholder="Search member name or ID" className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-emerald-700" /></div><button onClick={() => { setMemberOffset(0); setSearch(searchInput); }} className="rounded-xl bg-emerald-900 px-4 py-2.5 text-sm font-semibold text-white">Search</button><select aria-label="Filter by role" value={roleFilter} onChange={(event) => { setMemberOffset(0); setRoleFilter(event.target.value); }} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="">All roles</option><option value="distributor">Distributor</option><option value="mobile_stockist">Mobile Stockist</option><option value="branch_operator">Branch Operator</option><option value="manager">Manager</option><option value="admin">Admin</option></select><select aria-label="Filter by account status" value={statusFilter} onChange={(event) => { setMemberOffset(0); setStatusFilter(event.target.value); }} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="">All statuses</option><option value="active">Active</option><option value="inactive">Inactive / other</option></select></div>
                   <button onClick={exportMembers} disabled={!members.length} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-40"><Download className="h-4 w-4" /> Export current page</button>
                 </div>
                 <div className="overflow-x-auto">
@@ -243,7 +248,7 @@ export default function AdminDashboard({
                     </tbody>
                   </table>
                 </div>
-                <div className="p-4 border-t border-slate-100 flex items-center justify-between text-sm"><span className="text-slate-500">Showing {members.length} records</span><div className="flex gap-2"><button disabled={memberOffset === 0 || loading} onClick={() => void loadMembers(Math.max(0, memberOffset - pageSize), search)} className="rounded-lg border border-slate-200 px-3 py-2 disabled:opacity-40">Previous</button><button disabled={!hasMoreMembers || loading} onClick={() => void loadMembers(memberOffset + pageSize, search)} className="rounded-lg border border-slate-200 px-3 py-2 disabled:opacity-40">Next</button></div></div>
+                <div className="p-4 border-t border-slate-100 flex items-center justify-between text-sm"><span className="text-slate-500">Showing {members.length} records · Page {Math.floor(memberOffset / pageSize) + 1}</span><div className="flex gap-2"><button disabled={memberOffset === 0 || loading} onClick={() => void loadMembers(Math.max(0, memberOffset - pageSize), search)} className="rounded-lg border border-slate-200 px-3 py-2 disabled:opacity-40">Previous</button><button disabled={!hasMoreMembers || loading} onClick={() => void loadMembers(memberOffset + pageSize, search)} className="rounded-lg border border-slate-200 px-3 py-2 disabled:opacity-40">Next</button></div></div>
               </article>
             )}
 
