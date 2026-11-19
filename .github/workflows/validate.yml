@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - feature/unilevel-multi-role-access
+      - feature/admin-dashboard-foundation
 
 permissions:
   contents: read
