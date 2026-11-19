@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import WithdrawalsManagement from './WithdrawalsManagement';
+import ProductPvManagement from './ProductPvManagement';
 
 type AdminProfile = {
   id: string;
@@ -391,7 +392,8 @@ export default function AdminDashboard({
             )}
 
             {section === 'withdrawals' && <WithdrawalsManagement />}
-            {['sales', 'products', 'operations'].includes(section) && (
+            {section === 'products' && <ProductPvManagement />}
+            {['sales', 'operations'].includes(section) && (
               <article className="rounded-2xl border border-amber-200 bg-amber-50 p-6 sm:p-8">
                 <h2 className="font-bold text-amber-950">{sectionTitle} integration is pending schema verification</h2>
                 <p className="mt-2 max-w-3xl text-sm leading-relaxed text-amber-900">This panel is intentionally not populated with sample or guessed values. Before enabling edits or financial actions, the existing Supabase columns, RLS policies, and audit requirements must be confirmed and secured with database-side functions.</p>
