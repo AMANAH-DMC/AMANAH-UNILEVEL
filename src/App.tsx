@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import AdminDashboard from './components/AdminDashboard';
 import DistributorDashboard from './components/DistributorDashboard';
+import FrontDeskDashboard from './components/FrontDeskDashboard';
 import {
   Leaf,
   Menu,
@@ -403,6 +404,7 @@ const UNILEVEL_ROLES = [
   { id: 'mobile_stockist', label: 'Mobile Stockist', description: 'Assigned stock, inventory movements, replenishment requests, and product handovers within an authorized territory.' },
   { id: 'branch_operator', label: 'Branch Operator', description: 'Branch sales and order processing, member assistance, stock receiving, and branch-level daily reconciliation.' },
   { id: 'manager', label: 'Manager', description: 'Supervised branch and team performance, operational approvals, stock oversight, and management reports.' },
+  { id: 'front_desk', label: 'Front Desk', description: 'Front desk ordering, customer price categories, and printable order receipts.' },
   { id: 'admin', label: 'Admin', description: 'Authorized user and role administration, system configuration, audit monitoring, and controlled master data.' },
 ] as const;
 
@@ -840,23 +842,7 @@ export default function AmanahApp() {
 
           {/* Right: POS Cart Button + Amanah System Portal CTA + Mobile Hamburger */}
           <div className="flex items-center gap-2.5 sm:gap-3">
-            <button
-              onClick={() => setIsPosOpen(true)}
-              className={`relative inline-flex items-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-full text-sm font-semibold transition-all border ${
-                isScrolled || activeView === 'portal'
-                  ? 'bg-emerald-50 text-emerald-950 border-emerald-200 hover:bg-emerald-100'
-                  : 'bg-white/15 backdrop-blur-md text-white border-white/25 hover:bg-white/25'
-              }`}
-              aria-label="Open POS Order Cart"
-            >
-              <ShoppingBag className="w-4 h-4 text-amber-500" />
-              <span className="hidden sm:inline">POS Cart</span>
-              {totalCartItems > 0 && (
-                <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-amber-500 text-emerald-950">
-                  {totalCartItems}
-                </span>
-              )}
-            </button>
+
 
             <button
               onClick={() => {
@@ -937,6 +923,8 @@ export default function AmanahApp() {
         <AdminDashboard profile={memberProfile} onSignOut={handleSignOut} />
       ) : memberProfile?.role === 'distributor' ? (
         <DistributorDashboard profile={memberProfile} onSignOut={handleSignOut} />
+      ) : memberProfile?.role === 'front_desk' ? (
+        <FrontDeskDashboard profile={memberProfile} onSignOut={handleSignOut} />
       ) : (
         <main className="pt-28 pb-24 px-4 sm:px-6 lg:px-8 min-h-screen bg-gradient-to-br from-emerald-950 via-emerald-900 to-stone-900 flex items-center justify-center relative overflow-hidden">
           {/* Ambient decorative rings */}
@@ -2311,324 +2299,6 @@ export default function AmanahApp() {
       {/* =====================================================================
           DRAWER: POINT-OF-SALE (POS) CARTING & ORDER CHECKOUT
          ===================================================================== */}
-      {isPosOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex justify-end"
-          onClick={() => setIsPosOpen(false)}
-        >
-          <div
-            className="bg-white w-full max-w-xl h-full shadow-2xl flex flex-col justify-between overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* POS Header */}
-            <div className="px-6 py-5 bg-emerald-950 text-white flex items-center justify-between border-b border-amber-400/30">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center">
-                  <Receipt className="w-5 h-5 text-amber-300" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold tracking-wide">
-                    Amanah POS Order Terminal
-                  </h3>
-                  <p className="text-xs text-emerald-200/80">
-                    Quick Product Carting & Member Allocation Checkout
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsPosOpen(false)}
-                className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white"
-                aria-label="Close POS Cart"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* POS Body: Quick Add Strip + Cart Items + Checkout Form or Receipt */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {/* Quick-Select Catalog Bar inside POS */}
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2.5">
-                  Quick Add Amanah Products
-                </p>
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {PRODUCTS_DATA.map((prod) => (
-                    <button
-                      key={prod.id}
-                      type="button"
-                      onClick={() => addToPosCart(prod, false)}
-                      className="shrink-0 px-3 py-2 rounded-xl bg-[#FAFBF9] hover:bg-emerald-50 border border-slate-200 hover:border-emerald-600 text-left transition-colors"
-                    >
-                      <p className="text-xs font-bold text-slate-800 max-w-[145px] truncate">
-                        {prod.name}
-                      </p>
-                      <p className="text-[11px] font-semibold text-emerald-700 mt-0.5">
-                        + ₱{prod.price.toLocaleString()}
-                      </p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {posOrderReceipt ? (
-                <div className="p-6 rounded-3xl bg-emerald-50/90 border border-emerald-200 space-y-4">
-                  <div className="flex items-center justify-between border-b border-emerald-200 pb-4">
-                    <div className="flex items-center gap-2.5">
-                      <CheckCircle2 className="w-6 h-6 text-emerald-700" />
-                      <div>
-                        <h4 className="font-bold text-emerald-950 text-base">
-                          POS Order Confirmed
-                        </h4>
-                        <p className="text-xs text-emerald-800">
-                          Ref: {posOrderReceipt.orderNumber} • {posOrderReceipt.date}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="text-xs text-slate-700 space-y-1">
-                    <p>
-                      <span className="font-bold">Client / Member:</span>{' '}
-                      {posOrderReceipt.customerName} ({posOrderReceipt.memberId})
-                    </p>
-                    <p>
-                      <span className="font-bold">Payment Method:</span>{' '}
-                      {posOrderReceipt.paymentMethod}
-                    </p>
-                  </div>
-
-                  <div className="divide-y divide-emerald-200/70 border-y border-emerald-200/70 py-2">
-                    {posOrderReceipt.items.map((item) => (
-                      <div
-                        key={item.product.id}
-                        className="py-2 flex items-center justify-between text-xs sm:text-sm"
-                      >
-                        <div>
-                          <p className="font-semibold text-slate-900">
-                            {item.product.name}
-                          </p>
-                          <p className="text-slate-500">
-                            {item.quantity} × ₱{item.product.price.toLocaleString()}
-                          </p>
-                        </div>
-                        <p className="font-bold text-emerald-950">
-                          ₱{(item.product.price * item.quantity).toLocaleString()}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="flex items-center justify-between text-base font-extrabold text-emerald-950 pt-1">
-                    <span>Total Amount Due</span>
-                    <span>₱{posOrderReceipt.subtotal.toLocaleString()}</span>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setPosOrderReceipt(null)}
-                    className="w-full py-3 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-white text-sm font-semibold transition-colors"
-                  >
-                    Start New POS Order
-                  </button>
-                </div>
-              ) : cart.length === 0 ? (
-                <div className="py-14 text-center border-2 border-dashed border-slate-200 rounded-3xl px-6">
-                  <ShoppingBag className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                  <h4 className="text-base font-bold text-slate-800">
-                    Your POS Cart is Empty
-                  </h4>
-                  <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-xs mx-auto">
-                    Select products from the gallery or use the Quick Add bar above to build a client or member order.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  {/* Active Cart Line Items */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                        Order Line Items ({totalCartItems})
-                      </h4>
-                      <button
-                        type="button"
-                        onClick={() => setCart([])}
-                        className="text-xs font-semibold text-red-600 hover:underline"
-                      >
-                        Clear All
-                      </button>
-                    </div>
-
-                    {cart.map((item) => (
-                      <div
-                        key={item.product.id}
-                        className="p-3.5 rounded-2xl bg-[#FAFBF9] border border-slate-200 flex items-center gap-3.5"
-                      >
-                        <img
-                          src={item.product.image}
-                          alt={item.product.name}
-                          className="w-16 h-12 rounded-xl object-cover shrink-0 bg-emerald-950"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <h5 className="text-sm font-bold text-slate-900 truncate">
-                            {item.product.name}
-                          </h5>
-                          <p className="text-xs text-emerald-800 font-semibold">
-                            ₱{item.product.price.toLocaleString()} each
-                          </p>
-                        </div>
-
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => updateCartQty(item.product.id, -1)}
-                            className="w-7 h-7 rounded-lg bg-white border border-slate-300 flex items-center justify-center hover:bg-slate-100"
-                            aria-label="Decrease quantity"
-                          >
-                            <Minus className="w-3.5 h-3.5" />
-                          </button>
-                          <span className="w-7 text-center text-sm font-bold">
-                            {item.quantity}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => updateCartQty(item.product.id, 1)}
-                            className="w-7 h-7 rounded-lg bg-white border border-slate-300 flex items-center justify-center hover:bg-slate-100"
-                            aria-label="Increase quantity"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => removeFromCart(item.product.id)}
-                            className="p-1.5 text-slate-400 hover:text-red-600 ml-1"
-                            aria-label="Remove item"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* POS Client & Payment Form */}
-                  <form id="pos-checkout-form" onSubmit={handlePosCheckout} className="space-y-4 pt-2 border-t border-slate-200">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                      Client / Distributor Details
-                    </h4>
-                    <div className="grid sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">
-                          Client / Buyer Name *
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={posCustomer.customerName}
-                          onChange={(e) =>
-                            setPosCustomer({ ...posCustomer, customerName: e.target.value })
-                          }
-                          placeholder="Full Name"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-emerald-700 outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">
-                          Amanah Member ID (Optional)
-                        </label>
-                        <input
-                          type="text"
-                          value={posCustomer.memberId}
-                          onChange={(e) =>
-                            setPosCustomer({ ...posCustomer, memberId: e.target.value })
-                          }
-                          placeholder="e.g. AMN-1024"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-emerald-700 outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">
-                          Mobile Number *
-                        </label>
-                        <input
-                          type="tel"
-                          required
-                          value={posCustomer.contactNumber}
-                          onChange={(e) =>
-                            setPosCustomer({ ...posCustomer, contactNumber: e.target.value })
-                          }
-                          placeholder="09XX XXX XXXX"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-emerald-700 outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">
-                          Payment / Fulfillment
-                        </label>
-                        <select
-                          value={posCustomer.paymentMethod}
-                          onChange={(e) =>
-                            setPosCustomer({ ...posCustomer, paymentMethod: e.target.value })
-                          }
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-emerald-700 outline-none bg-white"
-                        >
-                          <option>Cash / Hub Pickup</option>
-                          <option>GCash / Maya E-Wallet</option>
-                          <option>Bank Transfer (BDO / BPI)</option>
-                          <option>Cash on Delivery (COD)</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1">
-                        Delivery Address / Pickup Hub Notes
-                      </label>
-                      <input
-                        type="text"
-                        value={posCustomer.deliveryAddress}
-                        onChange={(e) =>
-                          setPosCustomer({ ...posCustomer, deliveryAddress: e.target.value })
-                        }
-                        placeholder="Complete address or Iloilo / Regional Hub pickup"
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-emerald-700 outline-none"
-                      />
-                    </div>
-                  </form>
-                </>
-              )}
-            </div>
-
-            {/* POS Sticky Footer Summary */}
-            {cart.length > 0 && !posOrderReceipt && (
-              <div className="p-6 bg-slate-50 border-t border-slate-200 space-y-4">
-                <div className="space-y-1.5 text-sm">
-                  <div className="flex justify-between text-slate-600">
-                    <span>Items Selected ({totalCartItems})</span>
-                    <span>₱{totalCartAmount.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-lg font-extrabold text-emerald-950 pt-1 border-t border-slate-200">
-                    <span>POS Grand Total</span>
-                    <span>₱{totalCartAmount.toLocaleString()}</span>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  form="pos-checkout-form"
-                  className="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-emerald-800 to-emerald-950 hover:from-emerald-700 hover:to-emerald-900 text-white font-bold text-sm shadow-lg flex items-center justify-center gap-2 transition-all"
-                >
-                  <CreditCard className="w-4 h-4 text-amber-400" />
-                  <span>Complete POS Order • ₱{totalCartAmount.toLocaleString()}</span>
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* =====================================================================
           MODAL 2: VIDEO & PHOTO LIGHTBOX MODAL
          ===================================================================== */}
