@@ -740,7 +740,10 @@ export default function AmanahApp() {
       if (!active || error || !data.user) return;
       try {
         const profile = await loadMemberProfile(data.user.id);
-        if (active && profile?.account_status === 'active') setMemberProfile(profile);
+        if (active && profile?.account_status === 'active') {
+          setMemberProfile(profile);
+          setActiveView('portal');
+        }
       } catch {
         // A valid Auth session without a member profile remains in enrollment flow.
       }
