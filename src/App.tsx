@@ -626,6 +626,7 @@ export default function AmanahApp() {
     const profile = await loadMemberProfile(userData.user.id);
     if (!profile) throw new Error('Registration was processed, but the member profile could not be loaded. Contact an administrator.');
     setMemberProfile(profile);
+    setActiveView('portal');
     setAuthFeedback({ loading: false, status: 'configured_ready', message: `Enrollment completed. Your assigned role is ${profile.role.replaceAll('_', ' ')}. Member number: ${profile.member_number}.` });
   };
 
@@ -699,6 +700,7 @@ export default function AmanahApp() {
         throw new Error(`This account is assigned to ${profile.role.replaceAll('_', ' ')}. Select that role and sign in again.`);
       }
       setMemberProfile(profile);
+      setActiveView('portal');
       setAuthFeedback({ loading: false, status: 'configured_ready', message: `Signed in successfully. Verified role: ${profile.role.replaceAll('_', ' ')}. Member number: ${profile.member_number}.` });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Authentication failed. Please try again.';
