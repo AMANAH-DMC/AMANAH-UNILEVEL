@@ -163,7 +163,7 @@ export default function AdminDashboard({
     setCodeHistoryLoading(true);
     setError('');
     try {
-      const { data, error: rpcError } = await supabase.rpc('revoke_activation_code', { p_activation_code_id: codeId });
+      const { data, error: rpcError } = await supabase.rpc('admin_revoke_activation_code', { p_activation_code_id: codeId });
       if (rpcError) throw rpcError;
       if (data !== true) throw new Error('The activation code was not revoked. It may already be used or revoked.');
       await Promise.all([loadActivationCodes(codeOffset), loadActivationEvents()]);
