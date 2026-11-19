@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from './lib/supabase';
 import {
   Leaf,
   Menu,
@@ -391,6 +392,21 @@ const MEDIA_ITEMS: MediaItem[] = [
 ];
 
 // ============================================================================
+ // AMANAH UNILEVEL ROLE CATALOG
+ // Role choice is a sign-in context only. The trusted account role must be
+ // assigned and verified by the backend; this selector never grants access.
+ // ============================================================================
+const UNILEVEL_ROLES = [
+  { id: 'distributor', label: 'Distributor', description: 'Personal profile, sponsor and downline genealogy, eligible sales volume, order history, and commission statements.' },
+  { id: 'mobile_stockist', label: 'Mobile Stockist', description: 'Assigned stock, inventory movements, replenishment requests, and product handovers within an authorized territory.' },
+  { id: 'branch_operator', label: 'Branch Operator', description: 'Branch sales and order processing, member assistance, stock receiving, and branch-level daily reconciliation.' },
+  { id: 'manager', label: 'Manager', description: 'Supervised branch and team performance, operational approvals, stock oversight, and management reports.' },
+  { id: 'admin', label: 'Admin', description: 'Authorized user and role administration, system configuration, audit monitoring, and controlled master data.' },
+] as const;
+
+type UnilevelRoleId = typeof UNILEVEL_ROLES[number]['id'];
+
+// ============================================================================
 // MAIN APPLICATION COMPONENT — AMANAH PROJECT SYSTEM
 // ============================================================================
 
@@ -442,6 +458,7 @@ export default function AmanahApp() {
 
   // Supabase-Ready Login / Registration Portal State
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot'>('login');
+  const [selectedRole, setSelectedRole] = useState<UnilevelRoleId>('distributor');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [authForm, setAuthForm] = useState({
     fullName: '',
@@ -452,13 +469,15 @@ export default function AmanahApp() {
   });
   const [authFeedback, setAuthFeedback] = useState<{
     loading: boolean;
-    status: 'idle' | 'configured_ready' | 'validation_error';
+    status: 'idle' | 'configured_ready' | 'validation_error' | 'not_connected';
     message: string;
-  }>({
-    loading: false,
-    status: 'idle',
-    message: '',
-  });
+  }>({ loading: false, status: 'idle', message: '' });
+  const [memberProfile, setMemberProfile] = useState<{
+    id: string; member_number: string; full_name: string; role: string; account_status: string;
+  } | null>(null);
+  const [activationRole, setActivationRole] = useState<'distributor' | 'mobile_stockist' | 'branch_operator' | 'manager'>('distributor');
+  const [sponsorProfileId, setSponsorProfileId] = useState('');
+  const [generatedActivation, setGeneratedActivation] = useState<{ activation_code: string; assigned_role: string; expires_at: string } | null>(null);
 
   // Monitor scroll for sticky glassmorphic header transition
   useEffect(() => {
@@ -579,46 +598,154 @@ export default function AmanahApp() {
     }, 650);
   };
 
-  // Supabase Authentication Integration Hook (No fake login bypass)
+  const loadMemberProfile = async (userId: string) => {
+    if (!supabase) throw new Error('Supabase is not configured.');
+    const { data, error } = await supabase
+      .from('member_profiles')
+      .select('id, member_number, full_name, role, account_status')
+      .eq('id', userId)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  };
+
+  const completeActivation = async () => {
+    if (!supabase) throw new Error('Supabase is not configured.');
+    if (!authForm.fullName.trim() || !authForm.memberCode.trim()) {
+      throw new Error('Enter your full legal name and Admin-issued activation code.');
+    }
+    const { error } = await supabase.rpc('register_member', {
+      p_activation_code: authForm.memberCode.trim(),
+      p_full_name: authForm.fullName.trim(),
+      p_mobile_number: null,
+    });
+    if (error) throw error;
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData.user) throw userError || new Error('Your authenticated session could not be verified.');
+    const profile = await loadMemberProfile(userData.user.id);
+    if (!profile) throw new Error('Registration was processed, but the member profile could not be loaded. Contact an administrator.');
+    setMemberProfile(profile);
+    setAuthFeedback({ loading: false, status: 'configured_ready', message: `Enrollment completed. Your assigned role is ${profile.role.replaceAll('_', ' ')}. Member number: ${profile.member_number}.` });
+  };
+
   const handleSupabaseAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabase) {
+      setAuthFeedback({ loading: false, status: 'not_connected', message: 'The website build is missing its Supabase configuration. The site administrator must set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in the deployment environment.' });
+      return;
+    }
     if (!authForm.email.trim()) {
-      setAuthFeedback({
-        loading: false,
-        status: 'validation_error',
-        message: 'Please enter a valid email address or Amanah Member ID.',
-      });
+      setAuthFeedback({ loading: false, status: 'validation_error', message: 'Enter the email address registered to your account.' });
       return;
     }
     if (authMode !== 'forgot' && authForm.password.length < 6) {
-      setAuthFeedback({
-        loading: false,
-        status: 'validation_error',
-        message: 'Password must be at least 6 characters long.',
-      });
+      setAuthFeedback({ loading: false, status: 'validation_error', message: 'Password must be at least 6 characters long.' });
+      return;
+    }
+    if (authMode === 'register' && (!authForm.fullName.trim() || !authForm.memberCode.trim())) {
+      setAuthFeedback({ loading: false, status: 'validation_error', message: 'Full legal name and an Admin-issued activation code are required.' });
       return;
     }
 
     setAuthFeedback({ loading: true, status: 'idle', message: '' });
+    try {
+      if (authMode === 'forgot') {
+        const { error } = await supabase.auth.resetPasswordForEmail(authForm.email.trim(), {
+          redirectTo: `${window.location.origin}${import.meta.env.BASE_URL}`,
+        });
+        if (error) throw error;
+        setAuthFeedback({ loading: false, status: 'configured_ready', message: 'If this email belongs to an account, a password recovery link has been sent.' });
+        return;
+      }
 
-    // Architectural integration point for Supabase Client:
-    // const { data, error } = await supabase.auth.signInWithPassword({
-    //   email: authForm.email,
-    //   password: authForm.password,
-    // });
-    setTimeout(() => {
-      setAuthFeedback({
-        loading: false,
-        status: 'configured_ready',
-        message:
-          authMode === 'login'
-            ? 'Amanah Portal credentials validated. Connect your VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables in src/lib/supabaseClient.ts to activate live member session tokens and dashboard routing.'
-            : authMode === 'register'
-            ? 'Member enrollment payload validated. Connect Supabase Auth (supabase.auth.signUp) to dispatch verification emails and provision new Amanah Project System profiles.'
-            : 'Password recovery payload validated. Connect Supabase Auth (supabase.auth.resetPasswordForEmail) to send secure reset links.',
+      if (authMode === 'register') {
+        const { data: currentSession } = await supabase.auth.getSession();
+        if (!currentSession.session) {
+          const { data, error } = await supabase.auth.signUp({
+            email: authForm.email.trim(),
+            password: authForm.password,
+            options: { emailRedirectTo: `${window.location.origin}${import.meta.env.BASE_URL}` },
+          });
+          if (error) throw error;
+          if (!data.session) {
+            setAuthFeedback({ loading: false, status: 'configured_ready', message: 'Account created. Check your email and confirm your address. Then return to this page, sign in with your email and password, and complete enrollment using your activation code. Your role will be assigned from that code.' });
+            setAuthMode('login');
+            return;
+          }
+        }
+        await completeActivation();
+        return;
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: authForm.email.trim(),
+        password: authForm.password,
       });
-    }, 550);
+      if (error) throw error;
+      const profile = await loadMemberProfile(data.user.id);
+      if (!profile) {
+        setMemberProfile(null);
+        setAuthMode('register');
+        setAuthFeedback({ loading: false, status: 'configured_ready', message: 'Your email is authenticated, but enrollment is not complete. Enter your Admin-issued activation code and full legal name to finish creating your member profile.' });
+        return;
+      }
+      if (profile.account_status !== 'active') {
+        await supabase.auth.signOut();
+        throw new Error('This member account is not active. Contact an AMANAH administrator.');
+      }
+      if (profile.role !== selectedRole) {
+        await supabase.auth.signOut();
+        throw new Error(`This account is assigned to ${profile.role.replaceAll('_', ' ')}. Select that role and sign in again.`);
+      }
+      setMemberProfile(profile);
+      setAuthFeedback({ loading: false, status: 'configured_ready', message: `Signed in successfully. Verified role: ${profile.role.replaceAll('_', ' ')}. Member number: ${profile.member_number}.` });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Authentication failed. Please try again.';
+      setAuthFeedback({ loading: false, status: 'validation_error', message });
+    }
   };
+
+  const handleGenerateActivation = async () => {
+    if (!supabase || memberProfile?.role !== 'admin') return;
+    setGeneratedActivation(null);
+    setAuthFeedback({ loading: true, status: 'idle', message: '' });
+    try {
+      const { data, error } = await supabase.rpc('generate_activation_code', {
+        p_role: activationRole,
+        p_sponsor_id: sponsorProfileId.trim() || null,
+      });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row?.activation_code) throw new Error('The server did not return a new activation code.');
+      setGeneratedActivation({ activation_code: row.activation_code, assigned_role: row.assigned_role, expires_at: row.expires_at });
+      setAuthFeedback({ loading: false, status: 'configured_ready', message: 'Activation code generated. Copy it now; the full code is only returned once.' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Activation code generation failed.';
+      setAuthFeedback({ loading: false, status: 'validation_error', message });
+    }
+  };
+
+  const handleSignOut = async () => {
+    if (supabase) await supabase.auth.signOut();
+    setMemberProfile(null);
+    setGeneratedActivation(null);
+    setAuthFeedback({ loading: false, status: 'idle', message: '' });
+  };
+
+  useEffect(() => {
+    if (!supabase) return;
+    let active = true;
+    supabase.auth.getUser().then(async ({ data, error }) => {
+      if (!active || error || !data.user) return;
+      try {
+        const profile = await loadMemberProfile(data.user.id);
+        if (active && profile?.account_status === 'active') setMemberProfile(profile);
+      } catch {
+        // A valid Auth session without a member profile remains in enrollment flow.
+      }
+    });
+    return () => { active = false; };
+  }, []);
 
   const filteredMedia =
     mediaFilter === 'all'
@@ -858,7 +985,7 @@ export default function AmanahApp() {
                       : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
-                  Member Sign In
+                  Role-Based Sign In
                 </button>
                 <button
                   type="button"
@@ -876,6 +1003,30 @@ export default function AmanahApp() {
                 </button>
               </div>
 
+              {authMode === 'login' && (
+                <div className="mb-6 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
+                  <label htmlFor="amanah-role" className="block text-xs font-bold uppercase tracking-wider text-emerald-950 mb-2">
+                    Select your account access
+                  </label>
+                  <select
+                    id="amanah-role"
+                    value={selectedRole}
+                    onChange={(e) => setSelectedRole(e.target.value as UnilevelRoleId)}
+                    className="w-full rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20"
+                  >
+                    {UNILEVEL_ROLES.map((role) => (
+                      <option key={role.id} value={role.id}>{role.label}</option>
+                    ))}
+                  </select>
+                  <p className="mt-2 text-xs leading-relaxed text-emerald-900/80">
+                    {UNILEVEL_ROLES.find((role) => role.id === selectedRole)?.description}
+                  </p>
+                  <p className="mt-2 text-[11px] text-slate-500">
+                    Access is determined by your verified account permissions, not by this selection.
+                  </p>
+                </div>
+              )}
+
               <div className="mb-6">
                 <h2 className="text-2xl font-bold text-slate-900">
                   {authMode === 'login' && 'Sign in to Amanah System'}
@@ -884,7 +1035,7 @@ export default function AmanahApp() {
                 </h2>
                 <p className="text-sm text-slate-500 mt-1">
                   {authMode === 'login' &&
-                    'Enter your registered email or Amanah Member Code to continue.'}
+                    'Enter your registered email or account ID and choose your assigned access role.'}
                   {authMode === 'register' &&
                     'Join our ethical wellness network and community stewardship program.'}
                   {authMode === 'forgot' &&
@@ -897,6 +1048,8 @@ export default function AmanahApp() {
                   className={`mb-6 p-4 rounded-xl text-sm border flex items-start gap-3 ${
                     authFeedback.status === 'validation_error'
                       ? 'bg-red-50 border-red-200 text-red-800'
+                      : authFeedback.status === 'not_connected'
+                      ? 'bg-amber-50 border-amber-200 text-amber-900'
                       : 'bg-emerald-50 border-emerald-200 text-emerald-900'
                   }`}
                 >
@@ -905,6 +1058,8 @@ export default function AmanahApp() {
                     <p className="font-semibold mb-0.5">
                       {authFeedback.status === 'validation_error'
                         ? 'Input Required'
+                        : authFeedback.status === 'not_connected'
+                        ? 'Authentication Not Connected'
                         : 'Supabase Integration Ready'}
                     </p>
                     <p className="leading-relaxed opacity-90">{authFeedback.message}</p>
@@ -934,7 +1089,7 @@ export default function AmanahApp() {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                        Hub / Sponsor Code (Optional)
+                        Admin-Issued Activation Code *
                       </label>
                       <input
                         type="text"
@@ -942,7 +1097,7 @@ export default function AmanahApp() {
                         onChange={(e) =>
                           setAuthForm({ ...authForm, memberCode: e.target.value })
                         }
-                        placeholder="AMN-2026-01"
+                        placeholder="Enter your one-time activation code"
                         className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 outline-none text-sm transition-all"
                       />
                     </div>
@@ -951,7 +1106,7 @@ export default function AmanahApp() {
 
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                    Email Address or Member ID
+                    Email Address
                   </label>
                   <div className="relative">
                     <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -1036,7 +1191,7 @@ export default function AmanahApp() {
                 >
                   <span>
                     {authFeedback.loading
-                      ? 'Validating Credentials...'
+                      ? 'Connecting securely...'
                       : authMode === 'login'
                       ? 'Access Amanah System'
                       : authMode === 'register'
@@ -1047,6 +1202,43 @@ export default function AmanahApp() {
                 </button>
               </form>
 
+              {memberProfile && (
+                <section className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-5 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wider text-emerald-800">Authenticated member</p>
+                      <h3 className="text-lg font-bold text-emerald-950">{memberProfile.full_name}</h3>
+                      <p className="text-sm text-emerald-900">{memberProfile.member_number} · {memberProfile.role.replaceAll('_', ' ')}</p>
+                    </div>
+                    <button type="button" onClick={handleSignOut} className="text-xs font-semibold text-emerald-900 underline">Sign out</button>
+                  </div>
+                  {memberProfile.role === 'admin' && (
+                    <div className="border-t border-emerald-200 pt-4 space-y-3">
+                      <h4 className="font-bold text-emerald-950">Generate activation code</h4>
+                      <p className="text-xs text-emerald-900/80">Admin-only. Codes expire after 7 days and are shown only once. Admin codes cannot be generated through this screen.</p>
+                      <label className="block text-xs font-semibold text-slate-700">New member role</label>
+                      <select value={activationRole} onChange={(e) => setActivationRole(e.target.value as typeof activationRole)} className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-sm">
+                        <option value="distributor">Distributor</option>
+                        <option value="mobile_stockist">Mobile Stockist</option>
+                        <option value="branch_operator">Branch Operator</option>
+                        <option value="manager">Manager</option>
+                      </select>
+                      <label className="block text-xs font-semibold text-slate-700">Sponsor profile UUID (optional)</label>
+                      <input value={sponsorProfileId} onChange={(e) => setSponsorProfileId(e.target.value)} placeholder="Leave blank if no sponsor" className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-sm" />
+                      <button type="button" disabled={authFeedback.loading} onClick={handleGenerateActivation} className="w-full rounded-xl bg-emerald-900 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">Generate one activation code</button>
+                      {generatedActivation && (
+                        <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 space-y-2">
+                          <p className="text-xs font-bold text-amber-900">Copy this code now — it will not be shown again</p>
+                          <code className="block break-all text-sm font-bold text-slate-900">{generatedActivation.activation_code}</code>
+                          <p className="text-xs text-slate-700">Role: {generatedActivation.assigned_role} · Expires: {new Date(generatedActivation.expires_at).toLocaleString()}</p>
+                          <button type="button" onClick={() => navigator.clipboard?.writeText(generatedActivation.activation_code)} className="rounded-lg bg-amber-200 px-3 py-2 text-xs font-bold text-amber-950">Copy activation code</button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </section>
+              )}
+
               <div className="mt-6 pt-6 border-t border-slate-100 text-center text-sm text-slate-600">
                 {authMode === 'login' ? (
                   <p>
@@ -1056,7 +1248,7 @@ export default function AmanahApp() {
                       onClick={() => setAuthMode('register')}
                       className="font-semibold text-emerald-800 hover:underline"
                     >
-                      Enroll as a Member
+                      Request Member Enrollment
                     </button>
                   </p>
                 ) : (
