@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
+import AdminDashboard from './components/AdminDashboard';
 import {
   Leaf,
   Menu,
@@ -926,7 +927,9 @@ export default function AmanahApp() {
       {/* =====================================================================
           CONDITIONAL VIEW: SUPABASE-READY AMANAH SYSTEM PORTAL OR LANDING PAGE
          ===================================================================== */}
-      {activeView === 'portal' ? (
+      {activeView === 'portal' ? (memberProfile?.role === 'admin' ? (
+        <AdminDashboard profile={memberProfile} onSignOut={handleSignOut} />
+      ) : (
         <main className="pt-28 pb-24 px-4 sm:px-6 lg:px-8 min-h-screen bg-gradient-to-br from-emerald-950 via-emerald-900 to-stone-900 flex items-center justify-center relative overflow-hidden">
           {/* Ambient decorative rings */}
           <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-amber-400/10 blur-3xl pointer-events-none" />
@@ -1267,7 +1270,7 @@ export default function AmanahApp() {
             </div>
           </div>
         </main>
-      ) : (
+      )) : (
         <main>
           {/* =================================================================
               2. CINEMATIC HERO BANNER
