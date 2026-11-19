@@ -215,6 +215,7 @@ export default function AdminDashboard({
       const row = Array.isArray(data) ? data[0] : data;
       if (!row?.activation_code) throw new Error('The server did not return an activation code.');
       setActivationCode({ code: row.activation_code, role: row.assigned_role, expiresAt: row.expires_at });
+      await Promise.all([loadActivationCodes(0), loadActivationEvents()]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Activation code generation failed.');
     } finally {
@@ -322,15 +323,54 @@ export default function AdminDashboard({
             )}
 
             {section === 'codes' && (
-              <article className="max-w-3xl rounded-2xl bg-white border border-slate-200 p-5 sm:p-7 shadow-sm space-y-4">
-                <div><h2 className="font-bold text-slate-900">Generate membership activation code</h2><p className="mt-1 text-sm text-slate-500">Uses the existing Admin-only database function. Each code is returned once and expires after seven days.</p></div>
-                <label className="block text-sm font-semibold text-slate-700">Assigned member role</label>
-                <select value={activationRole} onChange={(event) => setActivationRole(event.target.value as ActivationRole)} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"><option value="distributor">Distributor</option><option value="mobile_stockist">Mobile Stockist</option><option value="branch_operator">Branch Operator</option><option value="manager">Manager</option></select>
-                <label className="block text-sm font-semibold text-slate-700">Sponsor profile UUID (optional)</label>
-                <input value={sponsorId} onChange={(event) => setSponsorId(event.target.value)} placeholder="Sponsor member profile ID" className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" />
-                <button onClick={() => void generateCode()} disabled={codeLoading} className="rounded-xl bg-emerald-900 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">{codeLoading ? 'Generating securely…' : 'Generate activation code'}</button>
-                {activationCode && <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 space-y-2"><p className="text-xs font-bold uppercase tracking-wide text-amber-900">Shown once — copy and share securely</p><code className="block break-all text-sm font-bold text-slate-900">{activationCode.code}</code><p className="text-xs text-slate-600">Role: {activationCode.role} · Expires: {new Date(activationCode.expiresAt).toLocaleString()}</p><button onClick={() => void navigator.clipboard?.writeText(activationCode.code)} className="rounded-lg bg-amber-200 px-3 py-2 text-xs font-bold text-amber-950">Copy code</button></div>}
-              </article>
+              <div className="space-y-6">
+                <article className="max-w-3xl rounded-2xl bg-white border border-slate-200 p-5 sm:p-7 shadow-sm space-y-4">
+                  <div><h2 className="font-bold text-slate-900">Generate membership activation code</h2><p className="mt-1 text-sm text-slate-500">Admin-only generation. Each code is shown once and expires after seven days. Previously generated plaintext codes cannot be retrieved.</p></div>
+                  <label className="block text-sm font-semibold text-slate-700">Assigned member role</label>
+                  <select value={activationRole} onChange={(event) => setActivationRole(event.target.value as ActivationRole)} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"><option value="distributor">Distributor</option><option value="mobile_stockist">Mobile Stockist</option><option value="branch_operator">Branch Operator</option><option value="manager">Manager</option></select>
+                  <label className="block text-sm font-semibold text-slate-700">Sponsor profile UUID (optional)</label>
+                  <input value={sponsorId} onChange={(event) => setSponsorId(event.target.value)} placeholder="Sponsor member profile ID" className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" />
+                  <button onClick={() => void generateCode()} disabled={codeLoading} className="rounded-xl bg-emerald-900 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">{codeLoading ? 'Generating securely…' : 'Generate activation code'}</button>
+                  {activationCode && <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 space-y-2"><p className="text-xs font-bold uppercase tracking-wide text-amber-900">Shown once — copy and share securely</p><code className="block break-all text-sm font-bold text-slate-900">{activationCode.code}</code><p className="text-xs text-slate-600">Role: {activationCode.role} · Expires: {new Date(activationCode.expiresAt).toLocaleString()}</p><button onClick={() => void navigator.clipboard?.writeText(activationCode.code)} className="rounded-lg bg-amber-200 px-3 py-2 text-xs font-bold text-amber-950">Copy code</button></div>}
+                </article>
+
+                <article className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+                  <div className="p-4 sm:p-5 border-b border-slate-100 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"><div><h2 className="font-bold text-slate-900">Activation-code history</h2><p className="text-xs text-slate-500">Metadata only. Code hashes and plaintext values are never displayed.</p></div><button onClick={() => void loadActivationCodes(0)} disabled={codeHistoryLoading} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"><RefreshCw className={`h-4 w-4 ${codeHistoryLoading ? 'animate-spin' : ''}`} /> Refresh history</button></div>
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                      <input value={codeSearchInput} onChange={(event) => setCodeSearchInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { setCodeOffset(0); setCodeSearch(codeSearchInput); } }} placeholder="Search code record ID" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" />
+                      <button onClick={() => { setCodeOffset(0); setCodeSearch(codeSearchInput); }} className="rounded-xl bg-emerald-900 px-4 py-2.5 text-sm font-semibold text-white">Search history</button>
+                      <select aria-label="Filter activation role" value={codeRoleFilter} onChange={(event) => { setCodeOffset(0); setCodeRoleFilter(event.target.value); }} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="">All roles</option><option value="distributor">Distributor</option><option value="mobile_stockist">Mobile Stockist</option><option value="branch_operator">Branch Operator</option><option value="manager">Manager</option></select>
+                      <select aria-label="Filter activation status" value={codeStatusFilter} onChange={(event) => { setCodeOffset(0); setCodeStatusFilter(event.target.value); }} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="">All statuses</option><option value="unused">Unused</option><option value="redeemed">Redeemed</option><option value="expired">Expired</option><option value="revoked">Revoked</option></select>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Record ID</th><th className="px-4 py-3">Role</th><th className="px-4 py-3">Created</th><th className="px-4 py-3">Expires</th><th className="px-4 py-3">Redeemed</th><th className="px-4 py-3">Status</th></tr></thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {activationCodes.map((code) => <tr key={code.id} className="hover:bg-slate-50"><td className="px-4 py-3 font-mono text-xs text-slate-600">{code.id}</td><td className="px-4 py-3 capitalize">{(code.assigned_role || '—').replaceAll('_', ' ')}</td><td className="px-4 py-3 whitespace-nowrap">{code.created_at ? new Date(code.created_at).toLocaleString() : '—'}</td><td className="px-4 py-3 whitespace-nowrap">{code.expires_at ? new Date(code.expires_at).toLocaleString() : '—'}</td><td className="px-4 py-3 whitespace-nowrap">{code.redeemed_at ? new Date(code.redeemed_at).toLocaleString() : '—'}</td><td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          code.code_status === 'unused' ? 'bg-blue-50 text-blue-800' : code.code_status === 'redeemed' ? 'bg-emerald-50 text-emerald-800' : code.code_status === 'expired' ? 'bg-amber-50 text-amber-800' : 'bg-red-50 text-red-800'
+                        }`}>{code.code_status}</span></td></tr>)}
+                        {!codeHistoryLoading && activationCodes.length === 0 && <tr><td colSpan={6} className="px-4 py-10 text-center text-slate-500">No activation-code records match these filters.</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="p-4 border-t border-slate-100 flex items-center justify-between text-sm"><span className="text-slate-500">Showing {activationCodes.length} records · Page {Math.floor(codeOffset / pageSize) + 1}</span><div className="flex gap-2"><button disabled={codeOffset === 0 || codeHistoryLoading} onClick={() => void loadActivationCodes(Math.max(0, codeOffset - pageSize))} className="rounded-lg border border-slate-200 px-3 py-2 disabled:opacity-40">Previous</button><button disabled={!hasMoreCodes || codeHistoryLoading} onClick={() => void loadActivationCodes(codeOffset + pageSize)} className="rounded-lg border border-slate-200 px-3 py-2 disabled:opacity-40">Next</button></div></div>
+                </article>
+
+                <article className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+                  <div className="p-4 sm:p-5 border-b border-slate-100"><h2 className="font-bold text-slate-900">Recent activation audit events</h2><p className="mt-1 text-xs text-slate-500">Latest 10 security events recorded by the database.</p></div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Event</th><th className="px-4 py-3">Activation record</th><th className="px-4 py-3">Actor</th><th className="px-4 py-3">Date</th></tr></thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {activationEvents.map((event) => <tr key={event.event_id || `${event.event_type}-${event.occurred_at}`}><td className="px-4 py-3 font-semibold capitalize">{event.event_type.replaceAll('_', ' ')}</td><td className="px-4 py-3 font-mono text-xs">{event.activation_code_id || '—'}</td><td className="px-4 py-3 font-mono text-xs">{event.actor_id || '—'}</td><td className="px-4 py-3 whitespace-nowrap">{event.occurred_at ? new Date(event.occurred_at).toLocaleString() : '—'}</td></tr>)}
+                        {!eventHistoryLoading && activationEvents.length === 0 && <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-500">No activation audit events found.</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
+                </article>
+              </div>
             )}
 
             {['withdrawals', 'sales', 'products', 'operations'].includes(section) && (
