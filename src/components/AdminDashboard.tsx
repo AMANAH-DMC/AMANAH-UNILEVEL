@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   Activity, ArrowDownToLine, ArrowUpRight, BadgeCheck, Boxes, ClipboardList,
   Download, LayoutDashboard, LogOut, Package, RefreshCw, Search, ShieldCheck,
-  Users, Wallet, XCircle, History, Clock3, CheckCircle2, Ban,
+  Users, Wallet, XCircle,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -157,6 +157,22 @@ export default function AdminDashboard({
       setCodeHistoryLoading(false);
     }
   }, [codeSearch, codeRoleFilter, codeStatusFilter, pageSize]);
+
+  const revokeActivationCode = async (codeId: string) => {
+    if (!supabase || !window.confirm('Revoke this unused activation code? This action cannot be undone.')) return;
+    setCodeHistoryLoading(true);
+    setError('');
+    try {
+      const { data, error: rpcError } = await supabase.rpc('revoke_activation_code', { p_activation_code_id: codeId });
+      if (rpcError) throw rpcError;
+      if (data !== true) throw new Error('The activation code was not revoked. It may already be used or revoked.');
+      await Promise.all([loadActivationCodes(codeOffset), loadActivationEvents()]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to revoke activation code.');
+    } finally {
+      setCodeHistoryLoading(false);
+    }
+  };
 
   const loadActivationEvents = useCallback(async () => {
     if (!supabase) return;
@@ -346,12 +362,12 @@ export default function AdminDashboard({
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
-                      <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Record ID</th><th className="px-4 py-3">Role</th><th className="px-4 py-3">Created</th><th className="px-4 py-3">Expires</th><th className="px-4 py-3">Redeemed</th><th className="px-4 py-3">Status</th></tr></thead>
+                      <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Record ID</th><th className="px-4 py-3">Role</th><th className="px-4 py-3">Created</th><th className="px-4 py-3">Expires</th><th className="px-4 py-3">Redeemed</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Action</th></tr></thead>
                       <tbody className="divide-y divide-slate-100">
                         {activationCodes.map((code) => <tr key={code.id} className="hover:bg-slate-50"><td className="px-4 py-3 font-mono text-xs text-slate-600">{code.id}</td><td className="px-4 py-3 capitalize">{(code.assigned_role || '—').replaceAll('_', ' ')}</td><td className="px-4 py-3 whitespace-nowrap">{code.created_at ? new Date(code.created_at).toLocaleString() : '—'}</td><td className="px-4 py-3 whitespace-nowrap">{code.expires_at ? new Date(code.expires_at).toLocaleString() : '—'}</td><td className="px-4 py-3 whitespace-nowrap">{code.redeemed_at ? new Date(code.redeemed_at).toLocaleString() : '—'}</td><td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
                           code.code_status === 'unused' ? 'bg-blue-50 text-blue-800' : code.code_status === 'redeemed' ? 'bg-emerald-50 text-emerald-800' : code.code_status === 'expired' ? 'bg-amber-50 text-amber-800' : 'bg-red-50 text-red-800'
-                        }`}>{code.code_status}</span></td></tr>)}
-                        {!codeHistoryLoading && activationCodes.length === 0 && <tr><td colSpan={6} className="px-4 py-10 text-center text-slate-500">No activation-code records match these filters.</td></tr>}
+                        }`}>{code.code_status}</span></td><td className="px-4 py-3">{code.code_status === 'unused' ? <button onClick={() => void revokeActivationCode(code.id)} disabled={codeHistoryLoading} className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50">Revoke</button> : '—'}</td></tr>)}
+                        {!codeHistoryLoading && activationCodes.length === 0 && <tr><td colSpan={7} className="px-4 py-10 text-center text-slate-500">No activation-code records match these filters.</td></tr>}
                       </tbody>
                     </table>
                   </div>
