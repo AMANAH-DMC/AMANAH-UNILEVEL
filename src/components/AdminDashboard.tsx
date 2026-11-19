@@ -2,11 +2,12 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   Activity, ArrowDownToLine, ArrowUpRight, BadgeCheck, Boxes, ClipboardList,
   Download, LayoutDashboard, LogOut, Package, RefreshCw, Search, ShieldCheck,
-  Users, Wallet, XCircle,
+  Users, Wallet, XCircle, CircleDollarSign,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import WithdrawalsManagement from './WithdrawalsManagement';
 import ProductPvManagement from './ProductPvManagement';
+import CommissionManagement from './CommissionManagement';
 
 type AdminProfile = {
   id: string;
@@ -66,6 +67,7 @@ const navigation = [
   { id: 'members', label: 'Member Management', icon: Users },
   { id: 'codes', label: 'Activation Codes', icon: ShieldCheck },
   { id: 'withdrawals', label: 'Withdrawals', icon: Wallet },
+  { id: 'commissions', label: 'Commission Management', icon: CircleDollarSign },
   { id: 'sales', label: 'Sales & Accounting', icon: Activity },
   { id: 'products', label: 'Product Management', icon: Package },
   { id: 'operations', label: 'Stockists & Branches', icon: Boxes },
@@ -392,6 +394,7 @@ export default function AdminDashboard({
             )}
 
             {section === 'withdrawals' && <WithdrawalsManagement />}
+            {section === 'commissions' && <CommissionManagement />}
             {section === 'products' && <ProductPvManagement />}
             {['sales', 'operations'].includes(section) && (
               <article className="rounded-2xl border border-amber-200 bg-amber-50 p-6 sm:p-8">
