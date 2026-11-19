@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   Activity, ArrowDownToLine, ArrowUpRight, BadgeCheck, Boxes, ClipboardList,
   Download, LayoutDashboard, LogOut, Package, RefreshCw, Search, ShieldCheck,
-  Users, Wallet, XCircle,
+  Users, Wallet, XCircle, History, Clock3, CheckCircle2, Ban,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -34,6 +34,25 @@ type MemberRow = {
 };
 
 type ActivationRole = 'distributor' | 'mobile_stockist' | 'branch_operator' | 'manager';
+
+type ActivationCodeRow = {
+  id: string;
+  assigned_role: string | null;
+  sponsor_id: string | null;
+  created_at: string | null;
+  expires_at: string | null;
+  redeemed_at: string | null;
+  revoked_at: string | null;
+  code_status: 'unused' | 'redeemed' | 'expired' | 'revoked';
+};
+
+type ActivationEventRow = {
+  event_id: string;
+  event_type: string;
+  actor_id: string | null;
+  activation_code_id: string | null;
+  occurred_at: string | null;
+};
 
 const emptySummary: Summary = {
   total_members: 0, active_members: 0, inactive_members: 0,
@@ -72,6 +91,16 @@ export default function AdminDashboard({
   const [sponsorId, setSponsorId] = useState('');
   const [activationCode, setActivationCode] = useState<{ code: string; role: string; expiresAt: string } | null>(null);
   const [codeLoading, setCodeLoading] = useState(false);
+  const [activationCodes, setActivationCodes] = useState<ActivationCodeRow[]>([]);
+  const [activationEvents, setActivationEvents] = useState<ActivationEventRow[]>([]);
+  const [codeSearchInput, setCodeSearchInput] = useState('');
+  const [codeSearch, setCodeSearch] = useState('');
+  const [codeRoleFilter, setCodeRoleFilter] = useState('');
+  const [codeStatusFilter, setCodeStatusFilter] = useState('');
+  const [codeOffset, setCodeOffset] = useState(0);
+  const [hasMoreCodes, setHasMoreCodes] = useState(false);
+  const [codeHistoryLoading, setCodeHistoryLoading] = useState(false);
+  const [eventHistoryLoading, setEventHistoryLoading] = useState(false);
   const pageSize = 25;
 
   const loadSummary = useCallback(async () => {
@@ -105,18 +134,57 @@ export default function AdminDashboard({
     }
   }, [pageSize, search, roleFilter, statusFilter]);
 
+  const loadActivationCodes = useCallback(async (nextOffset = 0) => {
+    if (!supabase) return;
+    setCodeHistoryLoading(true);
+    setError('');
+    try {
+      const { data, error: rpcError } = await supabase.rpc('get_admin_activation_codes', {
+        p_search: codeSearch.trim() || null,
+        p_role: codeRoleFilter || null,
+        p_status: codeStatusFilter || null,
+        p_limit: pageSize + 1,
+        p_offset: nextOffset,
+      });
+      if (rpcError) throw rpcError;
+      const rows = (data || []) as ActivationCodeRow[];
+      setHasMoreCodes(rows.length > pageSize);
+      setActivationCodes(rows.slice(0, pageSize));
+      setCodeOffset(nextOffset);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to load activation-code history.');
+    } finally {
+      setCodeHistoryLoading(false);
+    }
+  }, [codeSearch, codeRoleFilter, codeStatusFilter, pageSize]);
+
+  const loadActivationEvents = useCallback(async () => {
+    if (!supabase) return;
+    setEventHistoryLoading(true);
+    try {
+      const { data, error: rpcError } = await supabase.rpc('get_admin_activation_events', { p_limit: 10 });
+      if (rpcError) throw rpcError;
+      setActivationEvents((data || []) as ActivationEventRow[]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to load activation audit events.');
+    } finally {
+      setEventHistoryLoading(false);
+    }
+  }, []);
+
   const refreshDashboard = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       await loadSummary();
       if (section === 'members') await loadMembers(0, search);
+      if (section === 'codes') await Promise.all([loadActivationCodes(0), loadActivationEvents()]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load dashboard data.');
     } finally {
       setLoading(false);
     }
-  }, [loadMembers, loadSummary, section, search]);
+  }, [loadActivationCodes, loadActivationEvents, loadMembers, loadSummary, section, search]);
 
   useEffect(() => {
     let mounted = true;
@@ -124,13 +192,14 @@ export default function AdminDashboard({
       try {
         await loadSummary();
         if (mounted && section === 'members') await loadMembers(0, search);
+        if (mounted && section === 'codes') await Promise.all([loadActivationCodes(0), loadActivationEvents()]);
       } catch (err) {
         if (mounted) setError(err instanceof Error ? err.message : 'Admin dashboard data could not be loaded.');
       }
     };
     void init();
     return () => { mounted = false; };
-  }, [loadSummary, loadMembers, section, search]);
+  }, [loadSummary, loadMembers, loadActivationCodes, loadActivationEvents, section, search]);
 
   const generateCode = async () => {
     if (!supabase) return;
