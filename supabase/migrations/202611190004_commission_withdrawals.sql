@@ -283,7 +283,7 @@ BEGIN
   IF NOT public.amanah_is_active_admin() THEN
     RAISE EXCEPTION 'Active administrator access required';
   END IF;
-  IF p_decision NOT IN ('approved', 'rejected') THEN
+  IF p_decision IS NULL OR p_decision NOT IN ('approved', 'rejected') THEN
     RAISE EXCEPTION 'Decision must be approved or rejected';
   END IF;
 
@@ -316,7 +316,7 @@ BEGIN
   IF NOT public.amanah_is_active_admin() THEN
     RAISE EXCEPTION 'Active administrator access required';
   END IF;
-  IF p_payment_method NOT IN ('gcash', 'cash') THEN
+  IF p_payment_method IS NULL OR p_payment_method NOT IN ('gcash', 'cash') THEN
     RAISE EXCEPTION 'Payment method must be GCash or cash';
   END IF;
   IF p_payment_method = 'gcash' AND NULLIF(btrim(p_payment_reference), '') IS NULL THEN
