@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import AdminDashboard from './components/AdminDashboard';
 import DistributorDashboard from './components/DistributorDashboard';
+import FrontDeskDashboard from './components/FrontDeskDashboard';
 import {
   Leaf,
   Menu,
@@ -403,6 +404,7 @@ const UNILEVEL_ROLES = [
   { id: 'mobile_stockist', label: 'Mobile Stockist', description: 'Assigned stock, inventory movements, replenishment requests, and product handovers within an authorized territory.' },
   { id: 'branch_operator', label: 'Branch Operator', description: 'Branch sales and order processing, member assistance, stock receiving, and branch-level daily reconciliation.' },
   { id: 'manager', label: 'Manager', description: 'Supervised branch and team performance, operational approvals, stock oversight, and management reports.' },
+  { id: 'front_desk', label: 'Front Desk', description: 'Front desk ordering, customer price categories, and printable order receipts.' },
   { id: 'admin', label: 'Admin', description: 'Authorized user and role administration, system configuration, audit monitoring, and controlled master data.' },
 ] as const;
 
