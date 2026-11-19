@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import AdminDashboard from './components/AdminDashboard';
+import DistributorDashboard from './components/DistributorDashboard';
 import {
   Leaf,
   Menu,
@@ -934,6 +935,8 @@ export default function AmanahApp() {
          ===================================================================== */}
       {activeView === 'portal' ? (memberProfile?.role === 'admin' ? (
         <AdminDashboard profile={memberProfile} onSignOut={handleSignOut} />
+      ) : memberProfile?.role === 'distributor' ? (
+        <DistributorDashboard profile={memberProfile} onSignOut={handleSignOut} />
       ) : (
         <main className="pt-28 pb-24 px-4 sm:px-6 lg:px-8 min-h-screen bg-gradient-to-br from-emerald-950 via-emerald-900 to-stone-900 flex items-center justify-center relative overflow-hidden">
           {/* Ambient decorative rings */}
