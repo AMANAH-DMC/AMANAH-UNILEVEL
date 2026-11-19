@@ -732,6 +732,21 @@ export default function AmanahApp() {
     setAuthFeedback({ loading: false, status: 'idle', message: '' });
   };
 
+  useEffect(() => {
+    if (!supabase) return;
+    let active = true;
+    supabase.auth.getUser().then(async ({ data, error }) => {
+      if (!active || error || !data.user) return;
+      try {
+        const profile = await loadMemberProfile(data.user.id);
+        if (active && profile?.account_status === 'active') setMemberProfile(profile);
+      } catch {
+        // A valid Auth session without a member profile remains in enrollment flow.
+      }
+    });
+    return () => { active = false; };
+  }, []);
+
   const filteredMedia =
     mediaFilter === 'all'
       ? MEDIA_ITEMS
