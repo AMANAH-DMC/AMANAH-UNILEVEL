@@ -1,3 +1,66 @@
+-- Extend the existing Admin-only activation generator with the dedicated Front Desk role.
+create or replace function public.generate_activation_code(
+    p_role public.amanah_role,
+    p_sponsor_id uuid default null
+)
+returns table(activation_code text, assigned_role public.amanah_role, expires_at timestamptz)
+language plpgsql
+security definer
+set search_path to ''
+as $function$
+declare
+    v_prefix text;
+    v_code text;
+    v_hash text;
+    v_expires timestamptz;
+    v_id uuid;
+begin
+    if (select auth.uid()) is null
+       or not public.amanah_is_active_admin() then
+        raise exception 'Admin authorization required';
+    end if;
+
+    v_prefix := case p_role
+        when 'distributor' then 'DIS'
+        when 'mobile_stockist' then 'MS'
+        when 'branch_operator' then 'BO'
+        when 'manager' then 'MGR'
+        when 'admin' then 'ADM'
+        when 'front_desk' then 'FD'
+    end;
+
+    if v_prefix is null then
+        raise exception 'Invalid activation role';
+    end if;
+
+    if p_sponsor_id is not null and not exists (
+        select 1 from public.member_profiles mp
+        where mp.id = p_sponsor_id and mp.account_status = 'active'
+    ) then
+        raise exception 'Sponsor does not exist or is not active';
+    end if;
+
+    v_code := v_prefix || '-' || upper(encode(extensions.gen_random_bytes(16), 'hex'));
+    v_hash := encode(extensions.digest(v_code, 'sha256'), 'hex');
+    v_expires := now() + interval '7 days';
+
+    insert into public.activation_codes (
+        code_hash, code_prefix, assigned_role, created_by, sponsor_id, expires_at
+    ) values (
+        v_hash, v_prefix, p_role, (select auth.uid()), p_sponsor_id, v_expires
+    ) returning id into v_id;
+
+    insert into public.activation_events (
+        activation_code_id, actor_id, event_type, event_details
+    ) values (
+        v_id, (select auth.uid()), 'generated',
+        jsonb_build_object('role', p_role, 'prefix', v_prefix, 'expires_at', v_expires)
+    );
+
+    return query select v_code, p_role, v_expires;
+end;
+$function$;
+
 -- Front Desk POS: private order records and server-authoritative price snapshots.
 begin;
 
