@@ -235,7 +235,7 @@ export default function AdminDashboard({
       setActivationCode({ code: row.activation_code, role: row.assigned_role, expiresAt: row.expires_at });
       await Promise.all([loadActivationCodes(0), loadActivationEvents()]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Activation code generation failed.');
+      setError(err && typeof err === 'object' && 'message' in err ? String(err.message) : err instanceof Error ? err.message : 'Activation code generation failed.');
     } finally {
       setCodeLoading(false);
     }
