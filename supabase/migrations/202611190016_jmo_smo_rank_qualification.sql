@@ -83,7 +83,7 @@ begin
     select
       pe.event_at,
       sum(pe.event_pv)::numeric(14,2) as group_delta,
-      sum(pe.event_pv) filter (where pe.member_id = v_member.id)::numeric(14,2) as personal_delta
+      (sum(pe.event_pv) filter (where pe.member_id = v_member.id))::numeric(14,2) as personal_delta
     from purchase_events pe
     group by pe.event_at
   ),
