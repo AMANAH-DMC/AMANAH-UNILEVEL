@@ -105,8 +105,8 @@ Deno.serve(async (req: Request) => {
       .eq("role", role);
     if (countError) throw countError;
 
-    if (role === "admin" && (count ?? 0) >= 2) {
-      return json({ error: "The two Admin accounts have already been created." }, 409);
+    if (role === "admin" && (count ?? 0) >= 1) {
+      return json({ error: "Only one Admin account is permitted." }, 409);
     }
     if (role === "front_desk" && (count ?? 0) >= 1) {
       return json({ error: "The Front Desk account has already been created." }, 409);
