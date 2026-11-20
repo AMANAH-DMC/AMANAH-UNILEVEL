@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import AdminDashboard from './components/AdminDashboard';
 import DistributorDashboard from './components/DistributorDashboard';
+import BranchOperatorDashboard from './components/BranchOperatorDashboard';
 import MobileStockistDashboard from './components/MobileStockistDashboard';
 import FrontDeskDashboard from './components/FrontDeskDashboard';
 import {
@@ -948,6 +949,8 @@ export default function AmanahApp() {
         <AdminDashboard profile={memberProfile} onSignOut={handleSignOut} />
       ) : memberProfile?.role === 'distributor' ? (
         <DistributorDashboard profile={memberProfile} onSignOut={handleSignOut} />
+      ) : memberProfile?.role === 'branch_operator' ? (
+        <BranchOperatorDashboard profile={memberProfile} onSignOut={handleSignOut} />
       ) : memberProfile?.role === 'mobile_stockist' ? (
         <MobileStockistDashboard profile={memberProfile} onSignOut={handleSignOut} />
       ) : memberProfile?.role === 'front_desk' ? (
