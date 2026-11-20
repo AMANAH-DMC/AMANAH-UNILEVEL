@@ -471,6 +471,7 @@ export default function AmanahApp() {
     fullName: '',
     memberCode: '',
     email: '',
+    username: '',
     password: '',
     rememberMe: true,
   });
@@ -648,11 +649,15 @@ export default function AmanahApp() {
     const sessionAvailable = Boolean(currentSessionData.session);
     setHasAuthenticatedSession(sessionAvailable);
     const email = authForm.email.trim() || currentSessionData.session?.user.email || '';
-    if (!email) {
+    const username = authForm.username.trim();
+    if (authMode === 'login' && !username) {
+      setAuthFeedback({ loading: false, status: 'validation_error', message: 'Enter your assigned username or Member Number.' });
+      return;
+    }
+    if ((authMode === 'register' || authMode === 'forgot') && !email) {
       setAuthFeedback({ loading: false, status: 'validation_error', message: 'Enter the email address registered to your account.' });
       return;
     }
-    if (authForm.email !== email) setAuthForm((previous) => ({ ...previous, email }));
     if ((authMode === 'login' || (authMode === 'register' && !sessionAvailable)) && authForm.password.length < 6) {
       setAuthFeedback({ loading: false, status: 'validation_error', message: 'Password must be at least 6 characters long.' });
       return;
@@ -683,7 +688,7 @@ export default function AmanahApp() {
           if (error) throw error;
           if (!data.session) {
             setHasAuthenticatedSession(false);
-            setAuthFeedback({ loading: false, status: 'configured_ready', message: 'Account created. Check your email and confirm your address. Then return to this page, sign in with your email and password, and complete enrollment using your activation code. Your role will be assigned from that code.' });
+            setAuthFeedback({ loading: false, status: 'configured_ready', message: 'Account created. Check your email and confirm your address. Then return here to complete enrollment with your activation code. After enrollment, sign in using your assigned username and password.' });
             setAuthMode('login');
             return;
           }
@@ -693,16 +698,29 @@ export default function AmanahApp() {
         return;
       }
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password: authForm.password,
+      const loginResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/username-login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ username, password: authForm.password }),
+      });
+      const loginResult = await loginResponse.json();
+      if (!loginResponse.ok || !loginResult?.session?.access_token || !loginResult?.session?.refresh_token) {
+        throw new Error(loginResult?.error || 'Username or password is incorrect.');
+      }
+      const { data, error } = await supabase.auth.setSession({
+        access_token: loginResult.session.access_token,
+        refresh_token: loginResult.session.refresh_token,
       });
       if (error) throw error;
+      if (!data.user) throw new Error('The authenticated account could not be verified.');
       const profile = await loadMemberProfile(data.user.id);
       setHasAuthenticatedSession(true);
       if (!profile) {
         setMemberProfile(null);
-        setAuthForm((previous) => ({ ...previous, email: data.user.email || email }));
+        setAuthForm((previous) => ({ ...previous, email: data.user.email || previous.email }));
         setActiveView('portal');
         setAuthMode('register');
         setAuthFeedback({ loading: false, status: 'configured_ready', message: 'Your email is authenticated, but enrollment is not complete. Enter your Admin-issued activation code and full legal name to finish creating your member profile.' });
@@ -1067,7 +1085,7 @@ export default function AmanahApp() {
                 </h2>
                 <p className="text-sm text-slate-500 mt-1">
                   {authMode === 'login' &&
-                    'Enter your registered email or account ID and choose your assigned access role.'}
+                    'Enter your assigned username or Member Number and choose your access role.'}
                   {authMode === 'register' &&
                     'Join our ethical wellness network and community stewardship program.'}
                   {authMode === 'forgot' &&
@@ -1136,22 +1154,43 @@ export default function AmanahApp() {
                   </div>
                 )}
 
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                    Email Address
-                  </label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      required
-                      value={authForm.email}
-                      onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
-                      placeholder="member@amanahproject.com"
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 outline-none text-sm transition-all"
-                    />
+                {(authMode === 'register' || authMode === 'forgot') && (
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                      Email Address
+                    </label>
+                    <div className="relative">
+                      <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="email"
+                        required
+                        value={authForm.email}
+                        onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
+                        placeholder="member@amanahproject.com"
+                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 outline-none text-sm transition-all"
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
+                {authMode === 'login' && (
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                      Username / Member Number
+                    </label>
+                    <div className="relative">
+                      <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        autoComplete="username"
+                        required
+                        value={authForm.username}
+                        onChange={(e) => setAuthForm({ ...authForm, username: e.target.value })}
+                        placeholder={selectedRole === 'admin' ? 'amanahadmin1' : selectedRole === 'front_desk' ? 'frontdesk' : 'Your Member Number'}
+                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 outline-none text-sm transition-all"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {(authMode === 'login' || (authMode === 'register' && !hasAuthenticatedSession)) && (
                   <div>
