@@ -466,6 +466,7 @@ export default function AmanahApp() {
   // Supabase-Ready Login / Registration Portal State
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [selectedRole, setSelectedRole] = useState<UnilevelRoleId>('distributor');
+  const [portalAccess, setPortalAccess] = useState<'member' | 'admin' | 'front_desk'>('member');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [authForm, setAuthForm] = useState({
     fullName: '',
@@ -1035,7 +1036,7 @@ export default function AmanahApp() {
                       : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
-                  Role-Based Sign In
+                  Portal Sign In
                 </button>
                 <button
                   type="button"
@@ -1054,38 +1055,64 @@ export default function AmanahApp() {
               </div>
 
               {authMode === 'login' && (
-                <div className="mb-6 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
-                  <label htmlFor="amanah-role" className="block text-xs font-bold uppercase tracking-wider text-emerald-950 mb-2">
-                    Select your account access
-                  </label>
-                  <select
-                    id="amanah-role"
-                    value={selectedRole}
-                    onChange={(e) => setSelectedRole(e.target.value as UnilevelRoleId)}
-                    className="w-full rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20"
-                  >
-                    {UNILEVEL_ROLES.map((role) => (
-                      <option key={role.id} value={role.id}>{role.label}</option>
-                    ))}
-                  </select>
-                  <p className="mt-2 text-xs leading-relaxed text-emerald-900/80">
-                    {UNILEVEL_ROLES.find((role) => role.id === selectedRole)?.description}
+                <section className="mb-7" aria-label="Choose portal">
+                  <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Choose your secure portal
                   </p>
-                  <p className="mt-2 text-[11px] text-slate-500">
-                    Access is determined by your verified account permissions, not by this selection.
+                  <div className="grid grid-cols-3 gap-2">
+                    {([
+                      { id: 'member', role: 'distributor', title: 'Member', detail: 'Distributor access', icon: User },
+                      { id: 'admin', role: 'admin', title: 'Admin', detail: 'System management', icon: ShieldCheck },
+                      { id: 'front_desk', role: 'front_desk', title: 'Front Desk', detail: 'Orders & receipts', icon: ShoppingBag },
+                    ] as const).map((portal) => {
+                      const active = portalAccess === portal.id;
+                      const PortalIcon = portal.icon;
+                      return (
+                        <button
+                          key={portal.id}
+                          type="button"
+                          onClick={() => {
+                            setPortalAccess(portal.id);
+                            setSelectedRole(portal.role);
+                            setAuthFeedback({ loading: false, status: 'idle', message: '' });
+                          }}
+                          aria-pressed={active}
+                          className={`min-h-28 rounded-2xl border p-3 text-left transition-all focus:outline-none focus:ring-2 focus:ring-emerald-700/30 ${
+                            active
+                              ? 'border-emerald-800 bg-emerald-50 text-emerald-950 shadow-sm'
+                              : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:bg-slate-50'
+                          }`}
+                        >
+                          <PortalIcon className={`mb-3 h-5 w-5 ${active ? 'text-emerald-800' : 'text-slate-400'}`} />
+                          <span className="block text-sm font-bold">{portal.title}</span>
+                          <span className="mt-1 block text-[10px] leading-tight opacity-75">{portal.detail}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-3 text-xs leading-relaxed text-slate-500">
+                    {portalAccess === 'admin'
+                      ? 'Authorized administrators only. Your Admin permission is verified after sign-in.'
+                      : portalAccess === 'front_desk'
+                      ? 'For authorized front-desk staff. Your Front Desk permission is verified after sign-in.'
+                      : 'For distributors and members. Your assigned member role is verified after sign-in.'}
                   </p>
-                </div>
+                </section>
               )}
 
               <div className="mb-6">
                 <h2 className="text-2xl font-bold text-slate-900">
-                  {authMode === 'login' && 'Sign in to Amanah System'}
+                  {authMode === 'login' && (portalAccess === 'admin' ? 'Admin Portal Sign In' : portalAccess === 'front_desk' ? 'Front Desk Sign In' : 'Member Sign In')}
                   {authMode === 'register' && 'Register an Amanah Member Profile'}
                   {authMode === 'forgot' && 'Recover Portal Access'}
                 </h2>
                 <p className="text-sm text-slate-500 mt-1">
                   {authMode === 'login' &&
-                    'Enter your assigned username or Member Number and choose your access role.'}
+                    (portalAccess === 'admin'
+                      ? 'Use your assigned administrator username and password.'
+                      : portalAccess === 'front_desk'
+                      ? 'Use your assigned front-desk username and password.'
+                      : 'Enter your assigned username or Member Number.')}
                   {authMode === 'register' &&
                     'Join our ethical wellness network and community stewardship program.'}
                   {authMode === 'forgot' &&
