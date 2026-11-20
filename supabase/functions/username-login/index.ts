@@ -1,73 +1,43 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
-const json = (body: Record<string, unknown>, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
-
-  try {
-    const { username: rawUsername, password } = await req.json();
-    const username = String(rawUsername ?? "").trim().toLowerCase();
-    if (!/^[a-z0-9][a-z0-9._-]{2,39}$/.test(username) || typeof password !== "string" || password.length < 6) {
-      return json({ error: "Username or password is incorrect." }, 401);
-    }
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    if (!supabaseUrl || !serviceRoleKey || !anonKey) {
-      console.error("Username login function is missing required Supabase environment configuration.");
-      return json({ error: "Username sign-in is temporarily unavailable. Please contact an administrator." }, 500);
-    }
-
-    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-    const { data: mapping, error: mappingError } = await adminClient
-      .from("member_login_usernames")
-      .select("user_id")
-      .eq("username", username)
-      .maybeSingle();
-
-    if (mappingError || !mapping?.user_id) {
-      return json({ error: "Username or password is incorrect." }, 401);
-    }
-
-    const { data: userResult, error: userError } = await adminClient.auth.admin.getUserById(mapping.user_id);
-    const email = userResult?.user?.email;
-    if (userError || !email) {
-      return json({ error: "Username or password is incorrect." }, 401);
-    }
-
-    const authClient = createClient(supabaseUrl, anonKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-    const { data: signInData, error: signInError } = await authClient.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (signInError || !signInData.session) {
-      return json({ error: "Username or password is incorrect." }, 401);
-    }
-
-    return json({
-      session: {
-        access_token: signInData.session.access_token,
-        refresh_token: signInData.session.refresh_token,
-      },
-    });
-  } catch (_error) {
-    return json({ error: "Username or password is incorrect." }, 401);
-  }
-});
+line:5 char:32
++   "Access-Control-Allow-Origin": "*",
++                                ~
+Unexpected token ':' in expression or statement.
+At line:8 char:33
++   "Access-Control-Allow-Methods": "POST, OPTIONS",
++                                 ~
+Unexpected token ':' in expression or statement.
+At line:8 char:51
++   "Access-Control-Allow-Methods": "POST, OPTIONS",
++                                                   ~
+Missing expression after ',' in pipeline element.
+At line:13 char:11
++     status,
++           ~
+Missing argument in parameter list.
+At line:15 char:21
++       ...corsHeaders,
++                     ~
+Missing argument in parameter list.
+At line:16 char:42
++       "Content-Type": "application/json",
++                                          ~
+Missing expression after ',' in pipeline element.
+At line:17 char:7
++     },
++       ~
+Missing expression after ',' in pipeline element.
+At line:32 char:33
++     const body = await req.json();
++                                 ~
+An expression was expected after '('.
+At line:38 char:8
++       !/^[a-z0-9][a-z0-9._-]{2,39}$/.test(username) ||
++        ~
+Missing expression after unary operator '!'.
+At line:38 char:9
++       !/^[a-z0-9][a-z0-9._-]{2,39}$/.test(username) ||
++         ~
+You must provide a value expression following the '/' operator.
+Not all parse errors were reported.  Correct the reported errors and try again.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : UnexpectedToken
