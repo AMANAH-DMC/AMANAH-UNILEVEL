@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { RefreshCw, Wallet, CheckCircle2, Clock3, AlertCircle, LogOut } from 'lucide-react';
+import { RefreshCw, Wallet, CheckCircle2, Clock3, AlertCircle, LogOut, Users, Network, Award, UserRound } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 type Profile = {
@@ -9,6 +9,9 @@ type Profile = {
   role: string;
   account_status: string;
 };
+
+type DownlineMember = { id: string; member_number: string | null; full_name: string; role: string; account_status: string; joined_at: string; level_number?: number; personal_pv: number };
+type DistributorDashboardData = { profile: Profile & { email?: string | null; mobile_number?: string | null; rank?: string; joined_at?: string }; sponsor: { id: string; member_number: string | null; full_name: string; role: string; account_status: string } | null; personal_pv: number; group_pv: number; direct_referral_count: number; direct_referrals: DownlineMember[]; downline: DownlineMember[]; level_totals: { level_number: number; member_count: number; group_pv: number }[]; pv_basis: string };
 
 type CommissionSummary = {
   unilevel_approved: number;
@@ -37,6 +40,7 @@ const money = (value: number | string | null | undefined) =>
   new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(value || 0));
 
 export default function DistributorDashboard({ profile, onSignOut }: { profile: Profile; onSignOut: () => void }) {
+  const [dashboard, setDashboard] = useState<DistributorDashboardData | null>(null);
   const [summary, setSummary] = useState<CommissionSummary | null>(null);
   const [history, setHistory] = useState<WithdrawalRow[]>([]);
   const [amount, setAmount] = useState('');
@@ -50,12 +54,15 @@ export default function DistributorDashboard({ profile, onSignOut }: { profile: 
     setLoading(true);
     setError('');
     try {
-      const [summaryResult, historyResult] = await Promise.all([
+      const [dashboardResult, summaryResult, historyResult] = await Promise.all([
+        supabase.rpc('get_distributor_dashboard'),
         supabase.rpc('get_member_commission_summary'),
         supabase.rpc('get_member_withdrawal_history'),
       ]);
+      if (dashboardResult.error) throw dashboardResult.error;
       if (summaryResult.error) throw summaryResult.error;
       if (historyResult.error) throw historyResult.error;
+      setDashboard(dashboardResult.data as DistributorDashboardData);
       const row = Array.isArray(summaryResult.data) ? summaryResult.data[0] : summaryResult.data;
       setSummary(row || null);
       setHistory((historyResult.data || []) as WithdrawalRow[]);
@@ -124,6 +131,76 @@ export default function DistributorDashboard({ profile, onSignOut }: { profile: 
 
         {error && <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{error}</div>}
         {notice && <div className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />{notice}</div>}
+
+        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center gap-2 text-slate-500"><UserRound className="h-4 w-4" /><span className="text-xs font-semibold uppercase tracking-wide">Personal PV</span></div>
+            <p className="mt-3 text-3xl font-extrabold text-emerald-950 tabular-nums">{loading ? '—' : Number(dashboard?.personal_pv || 0).toLocaleString('en-PH')}</p>
+            <p className="mt-1 text-xs text-slate-500">From paid purchases</p>
+          </article>
+          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center gap-2 text-slate-500"><Network className="h-4 w-4" /><span className="text-xs font-semibold uppercase tracking-wide">Group PV</span></div>
+            <p className="mt-3 text-3xl font-extrabold text-emerald-950 tabular-nums">{loading ? '—' : Number(dashboard?.group_pv || 0).toLocaleString('en-PH')}</p>
+            <p className="mt-1 text-xs text-slate-500">Personal PV plus levels 1–10</p>
+          </article>
+          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center gap-2 text-slate-500"><Users className="h-4 w-4" /><span className="text-xs font-semibold uppercase tracking-wide">Direct Referrals</span></div>
+            <p className="mt-3 text-3xl font-extrabold text-emerald-950 tabular-nums">{loading ? '—' : dashboard?.direct_referral_count ?? 0}</p>
+            <p className="mt-1 text-xs text-slate-500">Personally sponsored members</p>
+          </article>
+          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center gap-2 text-slate-500"><Award className="h-4 w-4" /><span className="text-xs font-semibold uppercase tracking-wide">Current Rank</span></div>
+            <p className="mt-3 text-xl font-extrabold capitalize text-emerald-950">{dashboard?.profile?.rank?.replaceAll('_', ' ') || 'Regular Member'}</p>
+            <p className="mt-1 text-xs text-slate-500">Rank qualification rules pending configuration</p>
+          </article>
+        </section>
+
+        <section className="grid gap-6 lg:grid-cols-3">
+          <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="font-bold text-slate-900">My account</h2>
+            <dl className="mt-4 space-y-3 text-sm">
+              <div className="flex justify-between gap-3"><dt className="text-slate-500">Member number</dt><dd className="font-semibold text-right">{dashboard?.profile?.member_number || '—'}</dd></div>
+              <div className="flex justify-between gap-3"><dt className="text-slate-500">Email</dt><dd className="font-semibold text-right break-all">{dashboard?.profile?.email || '—'}</dd></div>
+              <div className="flex justify-between gap-3"><dt className="text-slate-500">Mobile</dt><dd className="font-semibold text-right">{dashboard?.profile?.mobile_number || '—'}</dd></div>
+              <div className="flex justify-between gap-3"><dt className="text-slate-500">Status</dt><dd className="font-semibold capitalize">{dashboard?.profile?.account_status || '—'}</dd></div>
+            </dl>
+          </article>
+          <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
+            <h2 className="font-bold text-slate-900">My sponsor</h2>
+            {dashboard?.sponsor ? <div className="mt-4 rounded-xl bg-slate-50 p-4"><p className="font-bold text-slate-900">{dashboard.sponsor.full_name}</p><p className="mt-1 text-sm text-slate-500">{dashboard.sponsor.member_number || 'Member number unavailable'} · {dashboard.sponsor.role.replaceAll('_', ' ')}</p></div> : <p className="mt-4 text-sm text-slate-500">No sponsor is recorded for this account.</p>}
+          </article>
+        </section>
+
+        <section className="grid gap-6 lg:grid-cols-2">
+          <article className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="border-b border-slate-100 p-5"><h2 className="font-bold text-slate-900">Direct referrals</h2><p className="mt-1 text-xs text-slate-500">Members directly sponsored by you</p></div>
+            <div className="divide-y divide-slate-100">
+              {(dashboard?.direct_referrals || []).map((member) => <div key={member.id} className="flex items-center justify-between gap-3 p-4"><div className="min-w-0"><p className="truncate text-sm font-semibold text-slate-900">{member.full_name}</p><p className="text-xs text-slate-500">{member.member_number || 'No member number'} · {member.role.replaceAll('_', ' ')}</p></div><div className="text-right"><p className="text-sm font-semibold tabular-nums">{Number(member.personal_pv || 0).toLocaleString('en-PH')} PV</p><p className="text-xs capitalize text-slate-500">{member.account_status}</p></div></div>)}
+              {!loading && (dashboard?.direct_referrals?.length || 0) === 0 && <p className="p-6 text-center text-sm text-slate-500">No direct referrals yet.</p>}
+            </div>
+          </article>
+          <article className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="border-b border-slate-100 p-5"><h2 className="font-bold text-slate-900">Unilevel levels</h2><p className="mt-1 text-xs text-slate-500">Downline members and paid-purchase PV across ten levels</p></div>
+            <div className="divide-y divide-slate-100">
+              {(dashboard?.level_totals || []).map((level) => <div key={level.level_number} className="flex items-center justify-between gap-3 p-3 text-sm"><span className="font-semibold text-slate-700">Level {level.level_number}</span><span className="text-slate-500">{level.member_count} members</span><strong className="tabular-nums text-slate-900">{Number(level.group_pv || 0).toLocaleString('en-PH')} PV</strong></div>)}
+              {!loading && (dashboard?.level_totals?.length || 0) === 0 && <p className="p-6 text-center text-sm text-slate-500">No downline members yet.</p>}
+            </div>
+          </article>
+        </section>
+
+        <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-100 p-5"><h2 className="font-bold text-slate-900">My Unilevel downline</h2><p className="mt-1 text-xs text-slate-500">Members in your sponsored network, up to ten levels</p></div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Level</th><th className="px-4 py-3">Member</th><th className="px-4 py-3">Member number</th><th className="px-4 py-3">Role</th><th className="px-4 py-3 text-right">Personal PV</th><th className="px-4 py-3">Status</th></tr></thead>
+              <tbody className="divide-y divide-slate-100">
+                {(dashboard?.downline || []).map((member) => <tr key={member.id}><td className="px-4 py-3 font-semibold">L{member.level_number}</td><td className="px-4 py-3 font-medium">{member.full_name}</td><td className="px-4 py-3 text-slate-500">{member.member_number || '—'}</td><td className="px-4 py-3 capitalize">{member.role.replaceAll('_', ' ')}</td><td className="px-4 py-3 text-right tabular-nums">{Number(member.personal_pv || 0).toLocaleString('en-PH')}</td><td className="px-4 py-3 capitalize">{member.account_status}</td></tr>)}
+                {!loading && (dashboard?.downline?.length || 0) === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-500">Your Unilevel downline will appear here as members join your network.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <p className="text-xs text-slate-500">{dashboard?.pv_basis || 'PV is based on paid purchase records.'}</p>
 
         <section className="grid gap-4 lg:grid-cols-3">
           <article className="rounded-2xl bg-emerald-950 p-6 text-white shadow-sm lg:col-span-2">
