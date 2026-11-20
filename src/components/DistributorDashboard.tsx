@@ -49,7 +49,8 @@ const money = (value: number | string | null | undefined) =>
 
 export default function DistributorDashboard({ profile, onSignOut }: { profile: Profile; onSignOut: () => void }) {
   const [dashboard, setDashboard] = useState<DistributorDashboardData | null>(null);
-  const [summary, setSummary] = useState<CommissionSummary | null>(null);\n  const [rankProgress, setRankProgress] = useState<RankProgress | null>(null);
+  const [summary, setSummary] = useState<CommissionSummary | null>(null);
+  const [rankProgress, setRankProgress] = useState<RankProgress | null>(null);
   const [history, setHistory] = useState<WithdrawalRow[]>([]);
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(true);
@@ -65,12 +66,15 @@ export default function DistributorDashboard({ profile, onSignOut }: { profile: 
       const [dashboardResult, summaryResult, historyResult, rankResult] = await Promise.all([
         supabase.rpc('get_distributor_dashboard'),
         supabase.rpc('get_member_commission_summary'),
-        supabase.rpc('get_member_withdrawal_history'),\n        supabase.rpc('get_distributor_rank_progress'),
+        supabase.rpc('get_member_withdrawal_history'),
+        supabase.rpc('get_distributor_rank_progress'),
       ]);
       if (dashboardResult.error) throw dashboardResult.error;
       if (summaryResult.error) throw summaryResult.error;
-      if (historyResult.error) throw historyResult.error;\n      if (rankResult.error) throw rankResult.error;
-      setDashboard(dashboardResult.data as DistributorDashboardData);\n      setRankProgress(rankResult.data as RankProgress);
+      if (historyResult.error) throw historyResult.error;
+      if (rankResult.error) throw rankResult.error;
+      setDashboard(dashboardResult.data as DistributorDashboardData);
+      setRankProgress(rankResult.data as RankProgress);
       const row = Array.isArray(summaryResult.data) ? summaryResult.data[0] : summaryResult.data;
       setSummary(row || null);
       setHistory((historyResult.data || []) as WithdrawalRow[]);
@@ -141,7 +145,8 @@ export default function DistributorDashboard({ profile, onSignOut }: { profile: 
         {notice && <div className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />{notice}</div>}
 
         <MonthlyActivityCard />
-        <ProductCodeRedemption />\n
+        <ProductCodeRedemption />
+
         {rankProgress && (
           <section className="rounded-2xl border border-emerald-200 bg-white p-5 shadow-sm sm:p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
