@@ -49,6 +49,8 @@ type ActivationCodeRow = {
   code_status: 'unused' | 'redeemed' | 'expired' | 'revoked';
 };
 
+type MonthlyActivityRow = { member_id: string; member_number: string | null; full_name: string; role: string; account_status: string; activity_status: 'ACTIVE' | 'INACTIVE'; qualifying_purchase_count: number; last_qualifying_purchase_at: string | null; total_count: number };
+
 type ActivationEventRow = {
   event_id: string;
   event_type: string;
@@ -65,6 +67,7 @@ const emptySummary: Summary = {
 const navigation = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'members', label: 'Member Management', icon: Users },
+  { id: 'activity', label: 'Monthly Activity', icon: Activity },
   { id: 'codes', label: 'Activation Codes', icon: ShieldCheck },
   { id: 'withdrawals', label: 'Withdrawals', icon: Wallet },
   { id: 'commissions', label: 'Commission Management', icon: CircleDollarSign },
@@ -105,6 +108,14 @@ export default function AdminDashboard({
   const [hasMoreCodes, setHasMoreCodes] = useState(false);
   const [codeHistoryLoading, setCodeHistoryLoading] = useState(false);
   const [eventHistoryLoading, setEventHistoryLoading] = useState(false);
+  const [activityRows, setActivityRows] = useState<MonthlyActivityRow[]>([]);
+  const [activitySearchInput, setActivitySearchInput] = useState('');
+  const [activitySearch, setActivitySearch] = useState('');
+  const [activityRole, setActivityRole] = useState('');
+  const [activityStatus, setActivityStatus] = useState('');
+  const [activityOffset, setActivityOffset] = useState(0);
+  const [activityTotal, setActivityTotal] = useState(0);
+  const [activityLoading, setActivityLoading] = useState(false);
   const pageSize = 25;
 
   const loadSummary = useCallback(async () => {
@@ -192,6 +203,30 @@ export default function AdminDashboard({
     }
   }, []);
 
+  const loadMonthlyActivity = useCallback(async (nextOffset = 0) => {
+    if (!supabase) return;
+    setActivityLoading(true);
+    setError('');
+    try {
+      const { data, error: rpcError } = await supabase.rpc('get_admin_monthly_activity', {
+        p_search: activitySearch.trim() || null,
+        p_role: activityRole || null,
+        p_activity_status: activityStatus || null,
+        p_limit: pageSize,
+        p_offset: nextOffset,
+      });
+      if (rpcError) throw rpcError;
+      const rows = (data || []) as MonthlyActivityRow[];
+      setActivityRows(rows);
+      setActivityTotal(Number(rows[0]?.total_count || 0));
+      setActivityOffset(nextOffset);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to load monthly activity records.');
+    } finally {
+      setActivityLoading(false);
+    }
+  }, [activitySearch, activityRole, activityStatus, pageSize]);
+
   const refreshDashboard = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -199,12 +234,13 @@ export default function AdminDashboard({
       await loadSummary();
       if (section === 'members') await loadMembers(0, search);
       if (section === 'codes') await Promise.all([loadActivationCodes(0), loadActivationEvents()]);
+      if (section === 'activity') await loadMonthlyActivity(activityOffset);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load dashboard data.');
     } finally {
       setLoading(false);
     }
-  }, [loadActivationCodes, loadActivationEvents, loadMembers, loadSummary, section, search]);
+  }, [loadActivationCodes, loadActivationEvents, loadMembers, loadMonthlyActivity, loadSummary, section, search, activityOffset]);
 
   useEffect(() => {
     let mounted = true;
@@ -213,13 +249,14 @@ export default function AdminDashboard({
         await loadSummary();
         if (mounted && section === 'members') await loadMembers(0, search);
         if (mounted && section === 'codes') await Promise.all([loadActivationCodes(0), loadActivationEvents()]);
+        if (mounted && section === 'activity') await loadMonthlyActivity(0);
       } catch (err) {
         if (mounted) setError(err instanceof Error ? err.message : 'Admin dashboard data could not be loaded.');
       }
     };
     void init();
     return () => { mounted = false; };
-  }, [loadSummary, loadMembers, loadActivationCodes, loadActivationEvents, section, search]);
+  }, [loadSummary, loadMembers, loadActivationCodes, loadActivationEvents, loadMonthlyActivity, section, search]);
 
   const generateCode = async () => {
     if (!supabase) return;
@@ -391,6 +428,31 @@ export default function AdminDashboard({
                   </div>
                 </article>
               </div>
+            )}
+
+            {section === 'activity' && (
+              <article className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+                <div className="p-4 sm:p-5 border-b border-slate-100">
+                  <h2 className="font-bold text-slate-900">Monthly member activity</h2>
+                  <p className="mt-1 text-xs text-slate-500">ACTIVE means at least one paid regular-product purchase in the current Asia/Manila calendar month. Bundles do not qualify.</p>
+                  <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_180px_160px_auto]">
+                    <input value={activitySearchInput} onChange={e=>setActivitySearchInput(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){setActivityOffset(0);setActivitySearch(activitySearchInput);}}} placeholder="Search member name or number" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm"/>
+                    <select value={activityRole} onChange={e=>{setActivityOffset(0);setActivityRole(e.target.value);}} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="">All roles</option><option value="distributor">Distributor</option><option value="mobile_stockist">Mobile Stockist</option><option value="branch_operator">Branch Operator</option><option value="manager">Manager</option><option value="front_desk">Front Desk</option><option value="admin">Admin</option></select>
+                    <select value={activityStatus} onChange={e=>{setActivityOffset(0);setActivityStatus(e.target.value);}} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="">All activity</option><option value="ACTIVE">ACTIVE</option><option value="INACTIVE">INACTIVE</option></select>
+                    <button onClick={()=>{setActivityOffset(0);setActivitySearch(activitySearchInput);}} className="rounded-xl bg-emerald-900 px-4 py-2.5 text-sm font-semibold text-white">Search</button>
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Member</th><th className="px-4 py-3">Role</th><th className="px-4 py-3">Account</th><th className="px-4 py-3">Monthly activity</th><th className="px-4 py-3">Qualifying purchases</th><th className="px-4 py-3">Last qualifying purchase</th></tr></thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {activityRows.map(row=><tr key={row.member_id} className="hover:bg-slate-50"><td className="px-4 py-3"><p className="font-semibold text-slate-900">{row.full_name}</p><p className="text-xs text-slate-500">{row.member_number||'No member number'}</p></td><td className="px-4 py-3 capitalize">{row.role.replaceAll('_',' ')}</td><td className="px-4 py-3 capitalize">{row.account_status}</td><td className="px-4 py-3"><span className={`rounded-full px-3 py-1 text-xs font-bold ${row.activity_status==='ACTIVE'?'bg-emerald-100 text-emerald-800':'bg-slate-200 text-slate-600'}`}>{row.activity_status}</span></td><td className="px-4 py-3 tabular-nums">{row.qualifying_purchase_count}</td><td className="px-4 py-3 whitespace-nowrap">{row.last_qualifying_purchase_at?new Date(row.last_qualifying_purchase_at).toLocaleString():'—'}</td></tr>)}
+                      {!activityLoading&&activityRows.length===0&&<tr><td colSpan={6} className="px-4 py-10 text-center text-slate-500">No member records match these filters.</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="p-4 border-t border-slate-100 flex items-center justify-between text-sm"><span className="text-slate-500">Showing {activityRows.length} of {activityTotal} members · Page {Math.floor(activityOffset/pageSize)+1}</span><div className="flex gap-2"><button disabled={activityOffset===0||activityLoading} onClick={()=>void loadMonthlyActivity(Math.max(0,activityOffset-pageSize))} className="rounded-lg border border-slate-200 px-3 py-2 disabled:opacity-40">Previous</button><button disabled={activityOffset+pageSize>=activityTotal||activityLoading} onClick={()=>void loadMonthlyActivity(activityOffset+pageSize)} className="rounded-lg border border-slate-200 px-3 py-2 disabled:opacity-40">Next</button></div></div>
+              </article>
             )}
 
             {section === 'withdrawals' && <WithdrawalsManagement />}
