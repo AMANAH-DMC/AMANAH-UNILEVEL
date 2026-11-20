@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   Activity, ArrowDownToLine, ArrowUpRight, BadgeCheck, Boxes, ClipboardList,
   Download, LayoutDashboard, LogOut, Package, RefreshCw, Search, ShieldCheck,
-  Users, Wallet, XCircle, CircleDollarSign,
+  Users, Wallet, XCircle, CircleDollarSign, PackageSearch,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import WithdrawalsManagement from './WithdrawalsManagement';
@@ -51,6 +51,9 @@ type ActivationCodeRow = {
 
 type MonthlyActivityRow = { member_id: string; member_number: string | null; full_name: string; role: string; account_status: string; activity_status: 'ACTIVE' | 'INACTIVE'; qualifying_purchase_count: number; last_qualifying_purchase_at: string | null; total_count: number };
 
+type AdminProductCodeRow = { id: string; product_code: string; product_name: string; prefix: string; serial_number: string; product_pv: number; commissionable: boolean; status: 'issued' | 'redeemed' | 'void'; issued_by: string; issued_by_name: string | null; issued_by_member_number: string | null; issued_at: string; redeemed_by: string | null; redeemed_by_name: string | null; redeemed_by_member_number: string | null; redeemed_at: string | null; purchase_reference: string | null; redemption_id: string | null; total_count: number };
+type AdminProductCodeSummary = { total_codes: number; issued_codes: number; redeemed_codes: number; void_codes: number };
+
 type ActivationEventRow = {
   event_id: string;
   event_type: string;
@@ -68,6 +71,7 @@ const navigation = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'members', label: 'Member Management', icon: Users },
   { id: 'activity', label: 'Monthly Activity', icon: Activity },
+  { id: 'product-codes', label: 'Product Code Management', icon: PackageSearch },
   { id: 'codes', label: 'Activation Codes', icon: ShieldCheck },
   { id: 'withdrawals', label: 'Withdrawals', icon: Wallet },
   { id: 'commissions', label: 'Commission Management', icon: CircleDollarSign },
@@ -116,6 +120,15 @@ export default function AdminDashboard({
   const [activityOffset, setActivityOffset] = useState(0);
   const [activityTotal, setActivityTotal] = useState(0);
   const [activityLoading, setActivityLoading] = useState(false);
+  const [adminProductCodes, setAdminProductCodes] = useState<AdminProductCodeRow[]>([]);
+  const [adminProductCodeSummary, setAdminProductCodeSummary] = useState<AdminProductCodeSummary>({ total_codes: 0, issued_codes: 0, redeemed_codes: 0, void_codes: 0 });
+  const [productCodeSearchInput, setProductCodeSearchInput] = useState('');
+  const [productCodeSearch, setProductCodeSearch] = useState('');
+  const [productCodeStatus, setProductCodeStatus] = useState('');
+  const [productCodeProduct, setProductCodeProduct] = useState('');
+  const [productCodeOffset, setProductCodeOffset] = useState(0);
+  const [productCodeTotal, setProductCodeTotal] = useState(0);
+  const [productCodeLoading, setProductCodeLoading] = useState(false);
   const pageSize = 25;
 
   const loadSummary = useCallback(async () => {
@@ -227,6 +240,35 @@ export default function AdminDashboard({
     }
   }, [activitySearch, activityRole, activityStatus, pageSize]);
 
+  const loadAdminProductCodes = useCallback(async (nextOffset = 0) => {
+    if (!supabase) return;
+    setProductCodeLoading(true);
+    setError('');
+    try {
+      const [listResult, summaryResult] = await Promise.all([
+        supabase.rpc('get_admin_product_codes', {
+          p_search: productCodeSearch.trim() || null,
+          p_status: productCodeStatus || null,
+          p_product_code: productCodeProduct || null,
+          p_limit: pageSize,
+          p_offset: nextOffset,
+        }),
+        supabase.rpc('get_admin_product_code_summary'),
+      ]);
+      if (listResult.error) throw listResult.error;
+      if (summaryResult.error) throw summaryResult.error;
+      const rows = (listResult.data || []) as AdminProductCodeRow[];
+      setAdminProductCodes(rows);
+      setProductCodeTotal(Number(rows[0]?.total_count || 0));
+      setAdminProductCodeSummary(summaryResult.data || { total_codes: 0, issued_codes: 0, redeemed_codes: 0, void_codes: 0 });
+      setProductCodeOffset(nextOffset);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to load product-code records.');
+    } finally {
+      setProductCodeLoading(false);
+    }
+  }, [productCodeSearch, productCodeStatus, productCodeProduct, pageSize]);
+
   const refreshDashboard = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -235,12 +277,13 @@ export default function AdminDashboard({
       if (section === 'members') await loadMembers(0, search);
       if (section === 'codes') await Promise.all([loadActivationCodes(0), loadActivationEvents()]);
       if (section === 'activity') await loadMonthlyActivity(activityOffset);
+      if (section === 'product-codes') await loadAdminProductCodes(productCodeOffset);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load dashboard data.');
     } finally {
       setLoading(false);
     }
-  }, [loadActivationCodes, loadActivationEvents, loadMembers, loadMonthlyActivity, loadSummary, section, search, activityOffset]);
+  }, [loadActivationCodes, loadActivationEvents, loadMembers, loadMonthlyActivity, loadAdminProductCodes, loadSummary, section, search, activityOffset, productCodeOffset]);
 
   useEffect(() => {
     let mounted = true;
@@ -250,13 +293,14 @@ export default function AdminDashboard({
         if (mounted && section === 'members') await loadMembers(0, search);
         if (mounted && section === 'codes') await Promise.all([loadActivationCodes(0), loadActivationEvents()]);
         if (mounted && section === 'activity') await loadMonthlyActivity(0);
+        if (mounted && section === 'product-codes') await loadAdminProductCodes(0);
       } catch (err) {
         if (mounted) setError(err instanceof Error ? err.message : 'Admin dashboard data could not be loaded.');
       }
     };
     void init();
     return () => { mounted = false; };
-  }, [loadSummary, loadMembers, loadActivationCodes, loadActivationEvents, loadMonthlyActivity, section, search]);
+  }, [loadSummary, loadMembers, loadActivationCodes, loadActivationEvents, loadMonthlyActivity, loadAdminProductCodes, section, search]);
 
   const generateCode = async () => {
     if (!supabase) return;
@@ -427,6 +471,77 @@ export default function AdminDashboard({
                     </table>
                   </div>
                 </article>
+              </div>
+            )}
+
+            {section === 'product-codes' && (
+              <div className="space-y-5">
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  {[
+                    { label: 'Total product codes', value: adminProductCodeSummary.total_codes },
+                    { label: 'Unused / issued', value: adminProductCodeSummary.issued_codes },
+                    { label: 'Redeemed', value: adminProductCodeSummary.redeemed_codes },
+                    { label: 'Voided', value: adminProductCodeSummary.void_codes },
+                  ].map((item) => (
+                    <article key={item.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                      <p className="text-sm text-slate-500">{item.label}</p>
+                      <p className="mt-2 text-3xl font-bold tabular-nums text-slate-900">{Number(item.value || 0).toLocaleString()}</p>
+                    </article>
+                  ))}
+                </div>
+
+                <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                  <div className="space-y-3 border-b border-slate-100 p-4 sm:p-5">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <h2 className="font-bold text-slate-900">Product-code register and lifecycle history</h2>
+                        <p className="mt-1 text-xs text-slate-500">Read-only monitoring. Full redeemable codes and code hashes are never exposed to Admin.</p>
+                      </div>
+                      <button onClick={() => void loadAdminProductCodes(0)} disabled={productCodeLoading} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50">
+                        <RefreshCw className={`h-4 w-4 ${productCodeLoading ? 'animate-spin' : ''}`} /> Refresh records
+                      </button>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-[1fr_180px_200px_auto]">
+                      <input value={productCodeSearchInput} onChange={(event) => setProductCodeSearchInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { setProductCodeOffset(0); setProductCodeSearch(productCodeSearchInput); } }} placeholder="Search product, serial, or member" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" />
+                      <select aria-label="Filter product code status" value={productCodeStatus} onChange={(event) => { setProductCodeOffset(0); setProductCodeStatus(event.target.value); }} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm">
+                        <option value="">All statuses</option><option value="issued">Unused / issued</option><option value="redeemed">Redeemed</option><option value="void">Voided</option>
+                      </select>
+                      <select aria-label="Filter product" value={productCodeProduct} onChange={(event) => { setProductCodeOffset(0); setProductCodeProduct(event.target.value); }} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm">
+                        <option value="">All products</option><option value="spirulina">Spirulina</option><option value="serpentina">Serpentina</option><option value="herbal_oil">Herbal Oil</option><option value="herbal_rub">Herbal Rub</option><option value="baskug_coffee">Baskug Coffee</option><option value="barakah_coffee">Barakah Coffee</option><option value="max_c_pro">Max C Pro</option><option value="glutagen_cee">Glutagen Cee</option><option value="distributor_bundle">Distributor Bundle</option><option value="mobile_stockist_bundle">Mobile Stockist Bundle</option>
+                      </select>
+                      <button onClick={() => { setProductCodeOffset(0); setProductCodeSearch(productCodeSearchInput); }} className="rounded-xl bg-emerald-900 px-4 py-2.5 text-sm font-semibold text-white">Search</button>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                        <tr><th className="px-4 py-3">Code reference</th><th className="px-4 py-3">Product / PV</th><th className="px-4 py-3">Issued by / date</th><th className="px-4 py-3">Redeemed by / date</th><th className="px-4 py-3">Purchase reference</th><th className="px-4 py-3">Status</th></tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {adminProductCodes.map((row) => (
+                          <tr key={row.id} className="hover:bg-slate-50">
+                            <td className="px-4 py-3"><p className="font-mono text-xs font-semibold text-slate-800">{row.prefix}{row.serial_number}••</p><p className="mt-1 text-[11px] text-slate-400">{row.id}</p></td>
+                            <td className="px-4 py-3"><p className="font-semibold text-slate-900">{row.product_name}</p><p className="text-xs text-slate-500">{row.product_pv} PV · {row.commissionable ? 'Commissionable' : 'Not commissionable'}</p></td>
+                            <td className="px-4 py-3"><p className="font-medium">{row.issued_by_name || 'Unknown member'}</p><p className="text-xs text-slate-500">{row.issued_by_member_number || row.issued_by}</p><p className="mt-1 whitespace-nowrap text-xs text-slate-500">{new Date(row.issued_at).toLocaleString()}</p></td>
+                            <td className="px-4 py-3">{row.redeemed_at ? <><p className="font-medium">{row.redeemed_by_name || 'Unknown member'}</p><p className="text-xs text-slate-500">{row.redeemed_by_member_number || row.redeemed_by}</p><p className="mt-1 whitespace-nowrap text-xs text-slate-500">{new Date(row.redeemed_at).toLocaleString()}</p></> : '—'}</td>
+                            <td className="px-4 py-3 font-mono text-xs">{row.purchase_reference || '—'}</td>
+                            <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${row.status === 'redeemed' ? 'bg-emerald-50 text-emerald-800' : row.status === 'issued' ? 'bg-blue-50 text-blue-800' : 'bg-slate-100 text-slate-700'}`}>{row.status === 'issued' ? 'unused / issued' : row.status}</span><p className="mt-1 text-[11px] text-slate-400">{row.redemption_id ? 'Redemption recorded' : 'No redemption record'}</p></td>
+                          </tr>
+                        ))}
+                        {!productCodeLoading && adminProductCodes.length === 0 && <tr><td colSpan={6} className="px-4 py-10 text-center text-slate-500">No product-code records match these filters.</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-slate-100 p-4 text-sm">
+                    <span className="text-slate-500">Showing {adminProductCodes.length} of {productCodeTotal} records · Page {Math.floor(productCodeOffset / pageSize) + 1}</span>
+                    <div className="flex gap-2">
+                      <button disabled={productCodeOffset === 0 || productCodeLoading} onClick={() => void loadAdminProductCodes(Math.max(0, productCodeOffset - pageSize))} className="rounded-lg border border-slate-200 px-3 py-2 disabled:opacity-40">Previous</button>
+                      <button disabled={productCodeOffset + pageSize >= productCodeTotal || productCodeLoading} onClick={() => void loadAdminProductCodes(productCodeOffset + pageSize)} className="rounded-lg border border-slate-200 px-3 py-2 disabled:opacity-40">Next</button>
+                    </div>
+                  </div>
+                </article>
+                <p className="text-xs leading-relaxed text-slate-500">Audit details are read from the product-code issuance record and its associated redemption record. This screen does not issue, reveal, revoke, or edit product codes.</p>
               </div>
             )}
 
