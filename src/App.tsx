@@ -1036,7 +1036,7 @@ export default function AmanahApp() {
                       : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
-                  Role-Based Sign In
+                  Portal Sign In
                 </button>
                 <button
                   type="button"
@@ -1108,7 +1108,11 @@ export default function AmanahApp() {
                 </h2>
                 <p className="text-sm text-slate-500 mt-1">
                   {authMode === 'login' &&
-                    portalAccess === 'admin' ? 'Use your assigned administrator username and password.' : portalAccess === 'front_desk' ? 'Use your assigned front-desk username and password.' : 'Enter your assigned username or Member Number.'}
+                    (portalAccess === 'admin'
+                      ? 'Use your assigned administrator username and password.'
+                      : portalAccess === 'front_desk'
+                      ? 'Use your assigned front-desk username and password.'
+                      : 'Enter your assigned username or Member Number.')}
                   {authMode === 'register' &&
                     'Join our ethical wellness network and community stewardship program.'}
                   {authMode === 'forgot' &&
