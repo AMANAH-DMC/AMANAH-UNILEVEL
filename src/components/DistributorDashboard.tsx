@@ -204,7 +204,7 @@ export default function DistributorDashboard({ profile, onSignOut }: { profile: 
           <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center gap-2 text-slate-500"><Award className="h-4 w-4" /><span className="text-xs font-semibold uppercase tracking-wide">Current Rank</span></div>
             <p className="mt-3 text-xl font-extrabold capitalize text-emerald-950">{rankProgress?.earned_rank || dashboard?.profile?.rank?.replaceAll('_', ' ') || 'Regular Member'}</p>
-            <p className="mt-1 text-xs text-slate-500">Rank qualification rules pending configuration</p>
+            <p className="mt-1 text-xs text-slate-500">Promotional rank is permanent once earned</p>
           </article>
         </section>
 
