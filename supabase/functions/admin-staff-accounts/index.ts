@@ -39,7 +39,7 @@ Deno.serve(async (req: Request) => {
 
   let createdUserId: string | null = null;
   try {
-    const { data: callerData, error: callerError } = await callerClient.auth.getUser();
+    const { data: callerData, error: callerError } = await callerClient.auth.getUser(authorization.slice(7));
     if (callerError || !callerData.user) return json({ error: "Administrator sign-in is required." }, 401);
 
     const { data: callerProfile, error: profileError } = await adminClient
