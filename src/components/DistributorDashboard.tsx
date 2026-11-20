@@ -14,6 +14,13 @@ type Profile = {
 type DownlineMember = { id: string; member_number: string | null; full_name: string; role: string; account_status: string; joined_at: string; level_number?: number; personal_pv: number };
 type DistributorDashboardData = { profile: Profile & { email?: string | null; mobile_number?: string | null; rank?: string; joined_at?: string }; sponsor: { id: string; member_number: string | null; full_name: string; role: string; account_status: string } | null; personal_pv: number; group_pv: number; direct_referral_count: number; direct_referrals: DownlineMember[]; downline: DownlineMember[]; level_totals: { level_number: number; member_count: number; group_pv: number }[]; pv_basis: string };
 
+type RankProgress = {
+  registration_at: string; accumulation_ends_at: string; countdown_active: boolean; seconds_remaining: number;
+  personal_pv: number; group_pv: number; earned_rank: string;
+  jmo: { personal_target: number; group_target: number; personal_progress: number; group_progress: number; qualified: boolean; qualified_at: string | null; additional_rate: number };
+  smo: { personal_target: number; group_target: number; personal_progress: number; group_progress: number; qualified: boolean; qualified_at: string | null; additional_rate: number };
+};
+
 type CommissionSummary = {
   unilevel_approved: number;
   positional_approved: number;
@@ -42,7 +49,7 @@ const money = (value: number | string | null | undefined) =>
 
 export default function DistributorDashboard({ profile, onSignOut }: { profile: Profile; onSignOut: () => void }) {
   const [dashboard, setDashboard] = useState<DistributorDashboardData | null>(null);
-  const [summary, setSummary] = useState<CommissionSummary | null>(null);
+  const [summary, setSummary] = useState<CommissionSummary | null>(null);\n  const [rankProgress, setRankProgress] = useState<RankProgress | null>(null);
   const [history, setHistory] = useState<WithdrawalRow[]>([]);
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(true);
@@ -55,15 +62,15 @@ export default function DistributorDashboard({ profile, onSignOut }: { profile: 
     setLoading(true);
     setError('');
     try {
-      const [dashboardResult, summaryResult, historyResult] = await Promise.all([
+      const [dashboardResult, summaryResult, historyResult, rankResult] = await Promise.all([
         supabase.rpc('get_distributor_dashboard'),
         supabase.rpc('get_member_commission_summary'),
-        supabase.rpc('get_member_withdrawal_history'),
+        supabase.rpc('get_member_withdrawal_history'),\n        supabase.rpc('get_distributor_rank_progress'),
       ]);
       if (dashboardResult.error) throw dashboardResult.error;
       if (summaryResult.error) throw summaryResult.error;
-      if (historyResult.error) throw historyResult.error;
-      setDashboard(dashboardResult.data as DistributorDashboardData);
+      if (historyResult.error) throw historyResult.error;\n      if (rankResult.error) throw rankResult.error;
+      setDashboard(dashboardResult.data as DistributorDashboardData);\n      setRankProgress(rankResult.data as RankProgress);
       const row = Array.isArray(summaryResult.data) ? summaryResult.data[0] : summaryResult.data;
       setSummary(row || null);
       setHistory((historyResult.data || []) as WithdrawalRow[]);
@@ -134,7 +141,44 @@ export default function DistributorDashboard({ profile, onSignOut }: { profile: 
         {notice && <div className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />{notice}</div>}
 
         <MonthlyActivityCard />
-        <ProductCodeRedemption />
+        <ProductCodeRedemption />\n
+        {rankProgress && (
+          <section className="rounded-2xl border border-emerald-200 bg-white p-5 shadow-sm sm:p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-emerald-800">Promotional rank pathway</p>
+                <h2 className="mt-1 text-xl font-extrabold text-slate-900">JMO / SMO rank gauge</h2>
+                <p className="mt-1 text-sm text-slate-500">Your first-year accumulation starts on your registration date. Paid PV from regular products and both bundles counts.</p>
+              </div>
+              <div className="rounded-xl bg-emerald-50 px-4 py-3 sm:min-w-48">
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">Permanent rank earned</p>
+                <p className="mt-1 text-lg font-extrabold text-emerald-950">{rankProgress.earned_rank}</p>
+              </div>
+            </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Accumulated personal PV</p><p className="mt-1 text-2xl font-extrabold tabular-nums text-slate-900">{Number(rankProgress.personal_pv || 0).toLocaleString('en-PH')}</p></div>
+              <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Accumulated group PV</p><p className="mt-1 text-2xl font-extrabold tabular-nums text-slate-900">{Number(rankProgress.group_pv || 0).toLocaleString('en-PH')}</p></div>
+              <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs text-slate-500">One-year countdown</p><p className="mt-1 text-2xl font-extrabold tabular-nums text-slate-900">{rankProgress.countdown_active ? `${Math.ceil(Number(rankProgress.seconds_remaining || 0) / 86400).toLocaleString('en-PH')} days` : 'Ended'}</p><p className="mt-1 text-xs text-slate-500">Ends {new Date(rankProgress.accumulation_ends_at).toLocaleDateString('en-PH')}</p></div>
+            </div>
+            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+              {([
+                { key: 'JMO', label: 'Junior Marketing Officer', data: rankProgress.jmo },
+                { key: 'SMO', label: 'Senior Marketing Officer', data: rankProgress.smo },
+              ] as const).map((rank) => (
+                <article key={rank.key} className="rounded-xl border border-slate-200 p-4">
+                  <div className="flex items-start justify-between gap-3"><div><h3 className="font-bold text-slate-900">{rank.label}</h3><p className="mt-1 text-xs text-slate-500">Requires {rank.data.personal_target.toLocaleString('en-PH')} personal PV and {rank.data.group_target.toLocaleString('en-PH')} group PV</p></div><span className={`rounded-full px-3 py-1 text-xs font-bold ${rank.data.qualified ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>{rank.data.qualified ? 'QUALIFIED · PERMANENT' : 'IN PROGRESS'}</span></div>
+                  <div className="mt-4 space-y-3">
+                    <div><div className="mb-1 flex justify-between gap-2 text-xs"><span className="text-slate-600">Personal PV</span><strong className="tabular-nums">{Number(rankProgress.personal_pv).toLocaleString('en-PH')} / {rank.data.personal_target.toLocaleString('en-PH')}</strong></div><div className="h-2.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-emerald-700 transition-all" style={{ width: `${Math.min(100, Number(rank.data.personal_progress || 0))}%` }} /></div></div>
+                    <div><div className="mb-1 flex justify-between gap-2 text-xs"><span className="text-slate-600">Group PV</span><strong className="tabular-nums">{Number(rankProgress.group_pv).toLocaleString('en-PH')} / {rank.data.group_target.toLocaleString('en-PH')}</strong></div><div className="h-2.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-teal-600 transition-all" style={{ width: `${Math.min(100, Number(rank.data.group_progress || 0))}%` }} /></div></div>
+                  </div>
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3"><div><p className="text-xs text-slate-500">Additional positional commission</p><p className="text-lg font-extrabold text-emerald-900">+{(Number(rank.data.additional_rate) * 100).toFixed(1)}%</p></div>{rank.data.qualified_at && <p className="text-xs text-emerald-800">Qualified {new Date(rank.data.qualified_at).toLocaleDateString('en-PH')}</p>}</div>
+                </article>
+              ))}
+            </div>
+            <p className="mt-4 text-xs leading-relaxed text-slate-500">JMO and SMO each carry an additional 1.3% positional commission rate, separate from Unilevel commission. The peso amount depends on eligible positional volume; positional payout processing remains separate and is not activated by this rank tracker. Once earned, the rank is permanent.</p>
+          </section>
+        )}
+
 
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
