@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase';
 import WithdrawalsManagement from './WithdrawalsManagement';
 import ProductPvManagement from './ProductPvManagement';
 import CommissionManagement from './CommissionManagement';
+import StaffAccountManagement from './StaffAccountManagement';
 
 type AdminProfile = {
   id: string;
@@ -70,6 +71,7 @@ const emptySummary: Summary = {
 const navigation = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'members', label: 'Member Management', icon: Users },
+  { id: 'staff-accounts', label: 'Staff Accounts', icon: ShieldCheck },
   { id: 'activity', label: 'Monthly Activity', icon: Activity },
   { id: 'product-codes', label: 'Product Code Management', icon: PackageSearch },
   { id: 'codes', label: 'Activation Codes', icon: ShieldCheck },
@@ -388,6 +390,8 @@ export default function AdminDashboard({
             </header>
 
             {error && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 flex items-start gap-2"><XCircle className="h-4 w-4 mt-0.5 shrink-0" /><span>{error}</span></div>}
+
+            {section === 'staff-accounts' && <StaffAccountManagement />}
 
             {section === 'overview' && (
               <>
