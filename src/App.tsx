@@ -3,6 +3,7 @@ import { supabase } from './lib/supabase';
 import AdminDashboard from './components/AdminDashboard';
 import DistributorDashboard from './components/DistributorDashboard';
 import BranchOperatorDashboard from './components/BranchOperatorDashboard';
+import ManagerDashboard from './components/ManagerDashboard';
 import MobileStockistDashboard from './components/MobileStockistDashboard';
 import FrontDeskDashboard from './components/FrontDeskDashboard';
 import {
@@ -951,6 +952,8 @@ export default function AmanahApp() {
         <DistributorDashboard profile={memberProfile} onSignOut={handleSignOut} />
       ) : memberProfile?.role === 'branch_operator' ? (
         <BranchOperatorDashboard profile={memberProfile} onSignOut={handleSignOut} />
+      ) : memberProfile?.role === 'manager' ? (
+        <ManagerDashboard profile={memberProfile} onSignOut={handleSignOut} />
       ) : memberProfile?.role === 'mobile_stockist' ? (
         <MobileStockistDashboard profile={memberProfile} onSignOut={handleSignOut} />
       ) : memberProfile?.role === 'front_desk' ? (
