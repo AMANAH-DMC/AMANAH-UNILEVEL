@@ -97,7 +97,7 @@ BEGIN
     RAISE EXCEPTION 'Authentication required' USING errcode = '42501';
   END IF;
 
-  IF p_payment_method NOT IN ('cash', 'gcash', 'bank_transfer', 'card', 'other') THEN
+  IF p_payment_method IS NULL OR p_payment_method NOT IN ('cash', 'gcash', 'bank_transfer', 'card', 'other') THEN
     RAISE EXCEPTION 'Invalid payment method' USING errcode = '22023';
   END IF;
 
