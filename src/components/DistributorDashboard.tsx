@@ -248,7 +248,7 @@ export default function DistributorDashboard({ profile, onSignOut }: { profile: 
         <DistributorNetworkExplorer members={dashboard?.downline || []} />
         <p className="text-xs text-slate-500">{dashboard?.pv_basis || 'PV is based on paid purchase records.'}</p>
 
-        <section id="commission-history" className="grid gap-4 lg:grid-cols-3">
+        <section id="commission-summary" className="grid gap-4 lg:grid-cols-3">
           <article className="rounded-2xl bg-emerald-950 p-6 text-white shadow-sm lg:col-span-2">
             <div className="flex items-center gap-2 text-emerald-200"><Wallet className="h-5 w-5" /><span className="text-sm font-semibold">Available Commission</span></div>
             <p className="mt-4 text-4xl font-extrabold tabular-nums">{loading ? '—' : money(summary?.available_commission)}</p>
@@ -263,7 +263,7 @@ export default function DistributorDashboard({ profile, onSignOut }: { profile: 
           </article>
         </section>
 
-        <DistributorCommissionHistory />
+        <div id="commission-history"><DistributorCommissionHistory /></div>
 
         <section id="withdrawals" className="grid gap-6 lg:grid-cols-5">
           <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
