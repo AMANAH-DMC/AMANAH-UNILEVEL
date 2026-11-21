@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshCw, Wallet, CheckCircle2, Clock3, AlertCircle, LogOut, Users, Network, Award, UserRound } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { MonthlyActivityCard, ProductCodeRedemption } from './ProductCodePanels';
+import DistributorCommissionHistory from './DistributorCommissionHistory';
+import DistributorNetworkExplorer from './DistributorNetworkExplorer';
 
 type Profile = {
   id: string;
@@ -242,18 +244,7 @@ export default function DistributorDashboard({ profile, onSignOut }: { profile: 
           </article>
         </section>
 
-        <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-100 p-5"><h2 className="font-bold text-slate-900">My Unilevel downline</h2><p className="mt-1 text-xs text-slate-500">Members in your sponsored network, up to ten levels</p></div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Level</th><th className="px-4 py-3">Member</th><th className="px-4 py-3">Member number</th><th className="px-4 py-3">Role</th><th className="px-4 py-3 text-right">Personal PV</th><th className="px-4 py-3">Status</th></tr></thead>
-              <tbody className="divide-y divide-slate-100">
-                {(dashboard?.downline || []).map((member) => <tr key={member.id}><td className="px-4 py-3 font-semibold">L{member.level_number}</td><td className="px-4 py-3 font-medium">{member.full_name}</td><td className="px-4 py-3 text-slate-500">{member.member_number || '—'}</td><td className="px-4 py-3 capitalize">{member.role.replaceAll('_', ' ')}</td><td className="px-4 py-3 text-right tabular-nums">{Number(member.personal_pv || 0).toLocaleString('en-PH')}</td><td className="px-4 py-3 capitalize">{member.account_status}</td></tr>)}
-                {!loading && (dashboard?.downline?.length || 0) === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-500">Your Unilevel downline will appear here as members join your network.</td></tr>}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <DistributorNetworkExplorer members={dashboard?.downline || []} />
         <p className="text-xs text-slate-500">{dashboard?.pv_basis || 'PV is based on paid purchase records.'}</p>
 
         <section className="grid gap-4 lg:grid-cols-3">
@@ -270,6 +261,8 @@ export default function DistributorDashboard({ profile, onSignOut }: { profile: 
             <div className="mt-3 flex justify-between gap-3 border-t border-slate-100 pt-3 text-sm"><span className="text-slate-500">Already claimed</span><strong>{money(summary?.already_claimed)}</strong></div>
           </article>
         </section>
+
+        <DistributorCommissionHistory />
 
         <section className="grid gap-6 lg:grid-cols-5">
           <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
