@@ -86,8 +86,12 @@ BEGIN
     RAISE EXCEPTION 'Payment method must be cash or transfer' USING errcode = '22023';
   END IF;
   IF p_items IS NULL
-     OR jsonb_typeof(p_items) IS DISTINCT FROM 'array'
-     OR jsonb_array_length(p_items) < 1
+     OR jsonb_typeof(p_items) IS DISTINCT FROM 'array' THEN
+    RAISE EXCEPTION 'Order must contain between 1 and 100 item lines'
+      USING errcode = '22023';
+  END IF;
+
+  IF jsonb_array_length(p_items) < 1
      OR jsonb_array_length(p_items) > 100 THEN
     RAISE EXCEPTION 'Order must contain between 1 and 100 item lines'
       USING errcode = '22023';
