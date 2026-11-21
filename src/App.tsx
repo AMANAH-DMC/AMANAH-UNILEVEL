@@ -843,14 +843,6 @@ export default function AmanahApp() {
                 >
                   {BRAND_CONFIG.name}
                 </span>
-                <span
-                  className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border transition-colors ${
-                    isScrolled || activeView === 'portal'
-                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                      : 'bg-white/10 text-amber-300 border-amber-400/30'
-                  }`}
-                >
-                </span>
               </div>
               <span
                 className={`block text-[10px] uppercase tracking-[0.16em] font-semibold transition-colors ${
