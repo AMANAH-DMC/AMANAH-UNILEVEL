@@ -85,7 +85,7 @@ const navigation = [
   { id: 'commissions', label: 'Commission Management', icon: CircleDollarSign },
   { id: 'sales', label: 'Sales & Accounting', icon: Activity },
   { id: 'products', label: 'Product Management', icon: Package },
-  { id: 'operations', label: 'Stockists & Branches', icon: Boxes },
+  { id: 'operations', label: 'Branches, Stockists & Expenses', icon: Boxes },
 ];
 
 export default function AdminDashboard({
