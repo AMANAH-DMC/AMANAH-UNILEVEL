@@ -2,9 +2,12 @@ name: Validate AMANAH website
 
 on:
   pull_request:
-    branches: [main]
+    branches:
+      - main
+      - feature/pos-accounting-operations
   push:
     branches:
+      - feature/distributor-dashboard-upgrade
       - feature/unilevel-multi-role-access
       - feature/admin-dashboard-foundation
 

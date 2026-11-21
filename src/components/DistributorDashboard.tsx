@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshCw, Wallet, CheckCircle2, Clock3, AlertCircle, LogOut, Users, Network, Award, UserRound } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { MonthlyActivityCard, ProductCodeRedemption } from './ProductCodePanels';
+import DistributorNetworkExplorer from './DistributorNetworkExplorer';
+import { DashboardProductHero, DashboardSidebar } from './DashboardDesignSystem';
 
 type Profile = {
   id: string;
@@ -9,6 +11,7 @@ type Profile = {
   full_name: string;
   role: string;
   account_status: string;
+  sponsor_username?: string | null;
 };
 
 type DownlineMember = { id: string; member_number: string | null; full_name: string; role: string; account_status: string; joined_at: string; level_number?: number; personal_pv: number };
@@ -127,8 +130,8 @@ export default function DistributorDashboard({ profile, onSignOut }: { profile: 
   };
 
   return (
-    <main className="min-h-screen bg-slate-100 pt-20">
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
+    <main className="amanah-dashboard min-h-screen bg-slate-100 pt-20">
+      <div className="mx-auto flex max-w-[1600px] flex-col gap-5 lg:flex-row px-4 py-6 sm:px-6 lg:px-8"><DashboardSidebar role="Distributor" onSignOut={onSignOut} /><div id="dashboard-content" className="min-w-0 flex-1 space-y-6"><DashboardProductHero />
         <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-emerald-800">AMANAH Member Portal</p>
@@ -186,29 +189,29 @@ export default function DistributorDashboard({ profile, onSignOut }: { profile: 
 
 
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <a href="#account" className="block rounded-2xl outline-none transition hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"><article className="h-full rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center gap-2 text-slate-500"><UserRound className="h-4 w-4" /><span className="text-xs font-semibold uppercase tracking-wide">Personal PV</span></div>
             <p className="mt-3 text-3xl font-extrabold text-emerald-950 tabular-nums">{loading ? '—' : Number(dashboard?.personal_pv || 0).toLocaleString('en-PH')}</p>
             <p className="mt-1 text-xs text-slate-500">From paid purchases</p>
-          </article>
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          </article></a>
+          <a href="#network" className="block rounded-2xl outline-none transition hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"><article className="h-full rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center gap-2 text-slate-500"><Network className="h-4 w-4" /><span className="text-xs font-semibold uppercase tracking-wide">Group PV</span></div>
             <p className="mt-3 text-3xl font-extrabold text-emerald-950 tabular-nums">{loading ? '—' : Number(dashboard?.group_pv || 0).toLocaleString('en-PH')}</p>
             <p className="mt-1 text-xs text-slate-500">Personal PV plus levels 1–10</p>
-          </article>
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          </article></a>
+          <a href="#network" className="block rounded-2xl outline-none transition hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"><article className="h-full rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center gap-2 text-slate-500"><Users className="h-4 w-4" /><span className="text-xs font-semibold uppercase tracking-wide">Direct Referrals</span></div>
             <p className="mt-3 text-3xl font-extrabold text-emerald-950 tabular-nums">{loading ? '—' : dashboard?.direct_referral_count ?? 0}</p>
             <p className="mt-1 text-xs text-slate-500">Personally sponsored members</p>
-          </article>
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          </article></a>
+          <a href="#account" className="block rounded-2xl outline-none transition hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"><article className="h-full rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center gap-2 text-slate-500"><Award className="h-4 w-4" /><span className="text-xs font-semibold uppercase tracking-wide">Current Rank</span></div>
             <p className="mt-3 text-xl font-extrabold capitalize text-emerald-950">{rankProgress?.earned_rank || dashboard?.profile?.rank?.replaceAll('_', ' ') || 'Regular Member'}</p>
             <p className="mt-1 text-xs text-slate-500">Promotional rank is permanent once earned</p>
-          </article>
+          </article></a>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-3">
+        <section id="account" className="grid gap-6 lg:grid-cols-3">
           <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="font-bold text-slate-900">My account</h2>
             <dl className="mt-4 space-y-3 text-sm">
@@ -220,11 +223,11 @@ export default function DistributorDashboard({ profile, onSignOut }: { profile: 
           </article>
           <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
             <h2 className="font-bold text-slate-900">My sponsor</h2>
-            {dashboard?.sponsor ? <div className="mt-4 rounded-xl bg-slate-50 p-4"><p className="font-bold text-slate-900">{dashboard.sponsor.full_name}</p><p className="mt-1 text-sm text-slate-500">{dashboard.sponsor.member_number || 'Member number unavailable'} · {dashboard.sponsor.role.replaceAll('_', ' ')}</p></div> : <p className="mt-4 text-sm text-slate-500">No sponsor is recorded for this account.</p>}
+            {dashboard?.sponsor ? <div className="mt-4 rounded-xl bg-slate-50 p-4"><p className="font-bold text-slate-900">{dashboard.sponsor.full_name}</p><p className="mt-1 text-sm text-slate-500">{dashboard.sponsor.member_number || 'Member number unavailable'} · {dashboard.sponsor.role.replaceAll('_', ' ')}</p><p className="mt-1 text-sm text-slate-600">Username: <span className="font-semibold">{profile.sponsor_username || 'Username unavailable'}</span></p></div> : <p className="mt-4 text-sm text-slate-500">No sponsor is recorded for this account.</p>}
           </article>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-2">
+        <section id="network" className="grid gap-6 lg:grid-cols-2">
           <article className="rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="border-b border-slate-100 p-5"><h2 className="font-bold text-slate-900">Direct referrals</h2><p className="mt-1 text-xs text-slate-500">Members directly sponsored by you</p></div>
             <div className="divide-y divide-slate-100">
@@ -241,21 +244,10 @@ export default function DistributorDashboard({ profile, onSignOut }: { profile: 
           </article>
         </section>
 
-        <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-100 p-5"><h2 className="font-bold text-slate-900">My Unilevel downline</h2><p className="mt-1 text-xs text-slate-500">Members in your sponsored network, up to ten levels</p></div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Level</th><th className="px-4 py-3">Member</th><th className="px-4 py-3">Member number</th><th className="px-4 py-3">Role</th><th className="px-4 py-3 text-right">Personal PV</th><th className="px-4 py-3">Status</th></tr></thead>
-              <tbody className="divide-y divide-slate-100">
-                {(dashboard?.downline || []).map((member) => <tr key={member.id}><td className="px-4 py-3 font-semibold">L{member.level_number}</td><td className="px-4 py-3 font-medium">{member.full_name}</td><td className="px-4 py-3 text-slate-500">{member.member_number || '—'}</td><td className="px-4 py-3 capitalize">{member.role.replaceAll('_', ' ')}</td><td className="px-4 py-3 text-right tabular-nums">{Number(member.personal_pv || 0).toLocaleString('en-PH')}</td><td className="px-4 py-3 capitalize">{member.account_status}</td></tr>)}
-                {!loading && (dashboard?.downline?.length || 0) === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-500">Your Unilevel downline will appear here as members join your network.</td></tr>}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <DistributorNetworkExplorer members={dashboard?.downline || []} />
         <p className="text-xs text-slate-500">{dashboard?.pv_basis || 'PV is based on paid purchase records.'}</p>
 
-        <section className="grid gap-4 lg:grid-cols-3">
+        <section id="commission-summary" className="grid gap-4 lg:grid-cols-3">
           <article className="rounded-2xl bg-emerald-950 p-6 text-white shadow-sm lg:col-span-2">
             <div className="flex items-center gap-2 text-emerald-200"><Wallet className="h-5 w-5" /><span className="text-sm font-semibold">Available Commission</span></div>
             <p className="mt-4 text-4xl font-extrabold tabular-nums">{loading ? '—' : money(summary?.available_commission)}</p>
@@ -270,7 +262,9 @@ export default function DistributorDashboard({ profile, onSignOut }: { profile: 
           </article>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-5">
+        
+
+        <section id="withdrawals" className="grid gap-6 lg:grid-cols-5">
           <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
             <h2 className="text-lg font-bold text-slate-900">Request commission payout</h2>
             <p className="mt-1 text-sm text-slate-500">Request all available commission or enter a smaller partial amount. Payment is made externally by GCash or cash after Admin review.</p>
@@ -302,6 +296,7 @@ export default function DistributorDashboard({ profile, onSignOut }: { profile: 
           </article>
         </section>
         <p className="text-xs leading-relaxed text-slate-500">AMANAH records commission and payout confirmations only. It does not hold cash, maintain an e-wallet, or transfer money. A rejected request returns to your available commission calculation.</p>
+      </div>
       </div>
     </main>
   );

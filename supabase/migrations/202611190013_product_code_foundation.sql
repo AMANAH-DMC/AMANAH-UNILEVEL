@@ -159,10 +159,10 @@ declare
 begin
   select * into v_member from public.member_profiles
   where id = auth.uid()
-    and role = 'distributor'::public.amanah_role
+    and role in ('distributor'::public.amanah_role, 'manager'::public.amanah_role)
     and account_status = 'active';
   if not found then
-    raise exception 'Active Distributor access required' using errcode = '42501';
+    raise exception 'Active Distributor or Manager access required' using errcode = '42501';
   end if;
 
   if p_code is null or length(trim(p_code)) < 9 or length(trim(p_code)) > 20 then
