@@ -78,6 +78,48 @@ REVOKE ALL ON public.front_desk_pos_orders FROM anon, authenticated;
 REVOKE ALL ON public.front_desk_pos_order_items FROM anon, authenticated;
 REVOKE ALL ON public.front_desk_pos_prices FROM anon, authenticated;
 
+CREATE OR REPLACE FUNCTION public.front_desk_get_pos_prices()
+RETURNS TABLE (
+  product_code text,
+  product_name text,
+  walk_in_price numeric,
+  distributor_price numeric,
+  mobile_stockist_price numeric,
+  branch_operator_price numeric,
+  manager_price numeric
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+DECLARE
+  v_user uuid := auth.uid();
+  v_role text;
+BEGIN
+  IF v_user IS NULL THEN
+    RAISE EXCEPTION 'Authentication required' USING errcode = '42501';
+  END IF;
+
+  SELECT mp.role::text INTO v_role
+  FROM public.member_profiles mp
+  WHERE mp.id = v_user AND mp.account_status = 'active';
+
+  IF v_role IS NULL OR (
+    v_role <> 'front_desk' AND NOT public.amanah_is_active_admin()
+  ) THEN
+    RAISE EXCEPTION 'Front Desk or administrator access required' USING errcode = '42501';
+  END IF;
+
+  RETURN QUERY
+  SELECT p.product_code, p.product_name, p.walk_in_price,
+         p.distributor_price, p.mobile_stockist_price,
+         p.branch_operator_price, p.manager_price
+  FROM public.front_desk_pos_prices p
+  WHERE p.is_active = true
+  ORDER BY p.product_name;
+END;
+$function$;
+
 CREATE OR REPLACE FUNCTION public.front_desk_mark_pos_order_paid(
   p_order_id uuid,
   p_payment_method text,
@@ -310,13 +352,13 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.front_desk_mark_pos_order_paid(uuid, text, text) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.front_desk_get_pos_prices() FROM PUBLIC, anon;\nREVOKE ALL ON FUNCTION public.front_desk_mark_pos_order_paid(uuid, text, text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.front_desk_submit_expense(text, text, numeric, text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.admin_review_front_desk_expense(uuid, text, text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.admin_get_sales_accounting_summary(timestamptz, timestamptz) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.admin_list_front_desk_expenses(text, integer) FROM PUBLIC, anon;
 
-GRANT EXECUTE ON FUNCTION public.front_desk_mark_pos_order_paid(uuid, text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.front_desk_get_pos_prices() TO authenticated;\nGRANT EXECUTE ON FUNCTION public.front_desk_mark_pos_order_paid(uuid, text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.front_desk_submit_expense(text, text, numeric, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_review_front_desk_expense(uuid, text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_get_sales_accounting_summary(timestamptz, timestamptz) TO authenticated;
