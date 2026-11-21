@@ -9,6 +9,7 @@ type Profile = {
   full_name: string;
   role: string;
   account_status: string;
+  sponsor_username?: string | null;
 };
 
 type DownlineMember = { id: string; member_number: string | null; full_name: string; role: string; account_status: string; joined_at: string; level_number?: number; personal_pv: number };
@@ -170,7 +171,7 @@ export default function MobileStockistDashboard({ profile, onSignOut }: { profil
           </article>
           <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
             <h2 className="font-bold text-slate-900">My sponsor</h2>
-            {dashboard?.sponsor ? <div className="mt-4 rounded-xl bg-slate-50 p-4"><p className="font-bold text-slate-900">{dashboard.sponsor.full_name}</p><p className="mt-1 text-sm text-slate-500">{dashboard.sponsor.member_number || 'Member number unavailable'} · {dashboard.sponsor.role.replaceAll('_', ' ')}</p></div> : <p className="mt-4 text-sm text-slate-500">No sponsor is recorded for this account.</p>}
+            {dashboard?.sponsor ? <div className="mt-4 rounded-xl bg-slate-50 p-4"><p className="font-bold text-slate-900">{dashboard.sponsor.full_name}</p><p className="mt-1 text-sm text-slate-500">{dashboard.sponsor.member_number || 'Member number unavailable'} · {dashboard.sponsor.role.replaceAll('_', ' ')}</p><p className="mt-1 text-sm text-slate-600">Username: <span className="font-semibold">{profile.sponsor_username || 'Username unavailable'}</span></p></div> : <p className="mt-4 text-sm text-slate-500">No sponsor is recorded for this account.</p>}
           </article>
         </section>
 
