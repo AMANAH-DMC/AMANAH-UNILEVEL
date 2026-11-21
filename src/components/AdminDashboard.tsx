@@ -10,6 +10,7 @@ import ProductPvManagement from './ProductPvManagement';
 import CommissionManagement from './CommissionManagement';
 import AdminSalesAccounting from './AdminSalesAccounting';
 import StaffAccountManagement from './StaffAccountManagement';
+import MainAdminMemberPasswordManagement from './MainAdminMemberPasswordManagement';
 import { DashboardProductHero } from './DashboardDesignSystem';
 
 type AdminProfile = {
@@ -74,6 +75,7 @@ const navigation = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'members', label: 'Member Management', icon: Users },
   { id: 'staff-accounts', label: 'Staff Accounts', icon: ShieldCheck },
+  { id: 'member-passwords', label: 'Member Password Management', icon: KeyRound },
   { id: 'change-password', label: 'Change Password', icon: KeyRound },
   { id: 'activity', label: 'Monthly Activity', icon: Activity },
   { id: 'product-codes', label: 'Product Code Management', icon: PackageSearch },
@@ -93,6 +95,7 @@ export default function AdminDashboard({
   onSignOut: () => void;
 }) {
   const [section, setSection] = useState('overview');
+  const [canManageMemberPasswords, setCanManageMemberPasswords] = useState(false);
   const [newAdminPassword, setNewAdminPassword] = useState('');
   const [confirmAdminPassword, setConfirmAdminPassword] = useState('');
   const [passwordSaving, setPasswordSaving] = useState(false);
@@ -141,6 +144,23 @@ export default function AdminDashboard({
   const [productCodeTotal, setProductCodeTotal] = useState(0);
   const [productCodeLoading, setProductCodeLoading] = useState(false);
   const pageSize = 25;
+
+  useEffect(() => {
+    let active = true;
+    const verifyMainAdmin = async () => {
+      if (!supabase) return;
+      try {
+        const { data, error: invokeError } = await supabase.functions.invoke('admin-member-passwords', {
+          body: { action: 'authorize' },
+        });
+        if (active && !invokeError && data?.authorized === true) setCanManageMemberPasswords(true);
+      } catch {
+        if (active) setCanManageMemberPasswords(false);
+      }
+    };
+    void verifyMainAdmin();
+    return () => { active = false; };
+  }, [profile.id]);
 
   const changeAdminPassword = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -414,7 +434,7 @@ export default function AdminDashboard({
             <p className="text-xs text-emerald-200">{profile.member_number} · Verified Admin</p>
           </div>
           <nav className="p-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-1 gap-1">
-            {navigation.map((item) => {
+            {navigation.filter((item) => item.id !== 'member-passwords' || canManageMemberPasswords).map((item) => {
               const Icon = item.icon;
               const selected = section === item.id;
               return (
@@ -443,6 +463,7 @@ export default function AdminDashboard({
             {error && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 flex items-start gap-2"><XCircle className="h-4 w-4 mt-0.5 shrink-0" /><span>{error}</span></div>}
 
             {section === 'staff-accounts' && <StaffAccountManagement />}
+            {section === 'member-passwords' && canManageMemberPasswords && <MainAdminMemberPasswordManagement />}
             {section === 'change-password' && (
               <article className="max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="flex items-center gap-3">

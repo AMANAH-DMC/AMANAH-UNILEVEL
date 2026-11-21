@@ -3,3 +3,6 @@ verify_jwt = false
 
 [functions.admin-staff-accounts]
 verify_jwt = true
+
+[functions.admin-member-passwords]
+verify_jwt = true
