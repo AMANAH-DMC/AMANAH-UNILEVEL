@@ -141,7 +141,7 @@ export default function AdminSalesAccounting() {
             <label className="text-xs font-semibold text-slate-600">Search orders or products
               <input value={searchInput} onChange={event => setSearchInput(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { setSearch(searchInput); } }} placeholder="Order number, customer, product" className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-normal" />
             </label>
-            <button onClick={() => { setSearch(searchInput); void load(0); }} className="inline-flex items-center justify-center gap-2 self-end rounded-xl bg-emerald-900 px-4 py-2.5 text-sm font-semibold text-white">
+            <button onClick={() => setSearch(searchInput)} className="inline-flex items-center justify-center gap-2 self-end rounded-xl bg-emerald-900 px-4 py-2.5 text-sm font-semibold text-white">
               <Search className="h-4 w-4" /> Apply
             </button>
           </div>
