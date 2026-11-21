@@ -119,7 +119,7 @@ export default function ManagerDashboard({ profile, onSignOut }: { profile: Prof
 
   return (
     <main className="amanah-dashboard min-h-screen bg-slate-100 pt-20">
-      <div className="mx-auto flex max-w-[1600px] gap-5 px-4 py-6 sm:px-6 lg:px-8"><DashboardSidebar role="Manager" onSignOut={onSignOut} /><div id="dashboard-content" className="min-w-0 flex-1 space-y-6"><DashboardProductHero />
+      <div className="mx-auto flex max-w-[1600px] flex-col gap-5 lg:flex-row px-4 py-6 sm:px-6 lg:px-8"><DashboardSidebar role="Manager" onSignOut={onSignOut} /><div id="dashboard-content" className="min-w-0 flex-1 space-y-6"><DashboardProductHero />
         <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-emerald-800">AMANAH Manager Portal</p>
