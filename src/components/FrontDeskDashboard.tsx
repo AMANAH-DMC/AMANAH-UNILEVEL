@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { LogOut, Plus, Minus, Trash2, Printer, ShoppingCart, CheckCircle2, AlertCircle, PackagePlus, ReceiptText } from 'lucide-react';
+import { LogOut, Plus, Minus, Trash2, Printer, ShoppingCart, CheckCircle2, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { ProductCodeIssuance } from './ProductCodePanels';
 import FrontDeskExpenses from './FrontDeskExpenses';
