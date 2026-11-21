@@ -329,7 +329,9 @@ language plpgsql
 security definer
 set search_path = ''
 as $function$
-declare v_actor uuid := auth.uid();
+declare
+  v_actor uuid := auth.uid();
+  v_previous_operator uuid;
 begin
   if v_actor is null or not public.amanah_is_active_admin() then
     raise exception 'Admin authorization required' using errcode = '42501';
@@ -341,11 +343,20 @@ begin
     and mp.role='branch_operator'::public.amanah_role and mp.account_status='active') then
     raise exception 'Active Branch Operator account required' using errcode = '22023';
   end if;
+
+  select a.operator_member_id into v_previous_operator
+  from public.amanah_branch_operator_assignments a
+  where a.branch_id=p_branch_id;
+  delete from public.amanah_branch_operator_assignments
+  where branch_id=p_branch_id and operator_member_id<>p_operator_member_id;
+
   insert into public.amanah_branch_operator_assignments(operator_member_id,branch_id,assigned_by)
   values(p_operator_member_id,p_branch_id,v_actor)
   on conflict(operator_member_id) do update set branch_id=excluded.branch_id,assigned_by=excluded.assigned_by,assigned_at=now();
+
   insert into public.amanah_operations_audit(actor_id,event_type,entity_type,entity_id,details)
-  values(v_actor,'branch_operator_assigned','member',p_operator_member_id,jsonb_build_object('branch_id',p_branch_id));
+  values(v_actor,'branch_operator_assigned','member',p_operator_member_id,
+    jsonb_build_object('branch_id',p_branch_id,'previous_operator_member_id',v_previous_operator));
   return true;
 end;
 $function$;
