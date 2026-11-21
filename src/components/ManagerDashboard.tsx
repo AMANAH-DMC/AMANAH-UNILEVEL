@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshCw, Wallet, CheckCircle2, Clock3, AlertCircle, LogOut, Users, Network, Award, UserRound } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { MonthlyActivityCard, ProductCodeRedemption } from './ProductCodePanels';
+import { DashboardProductHero, DashboardSidebar } from './DashboardDesignSystem';
 
 type Profile = {
   id: string;
@@ -117,8 +118,8 @@ export default function ManagerDashboard({ profile, onSignOut }: { profile: Prof
   };
 
   return (
-    <main className="min-h-screen bg-slate-100 pt-20">
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
+    <main className="amanah-dashboard min-h-screen bg-slate-100 pt-20">
+      <div className="mx-auto flex max-w-[1600px] gap-5 px-4 py-6 sm:px-6 lg:px-8"><DashboardSidebar role="Manager" onSignOut={onSignOut} /><div id="dashboard-content" className="min-w-0 flex-1 space-y-6"><DashboardProductHero />
         <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-emerald-800">AMANAH Manager Portal</p>
@@ -254,6 +255,7 @@ export default function ManagerDashboard({ profile, onSignOut }: { profile: Prof
           </article>
         </section>
         <p className="text-xs leading-relaxed text-slate-500">AMANAH records commission and payout confirmations only. It does not hold cash, maintain an e-wallet, or transfer money. A rejected request returns to your available commission calculation.</p>
+      </div>
       </div>
     </main>
   );
