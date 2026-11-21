@@ -11,6 +11,7 @@ import CommissionManagement from './CommissionManagement';
 import StaffAccountManagement from './StaffAccountManagement';
 import AdminSalesAccounting from './AdminSalesAccounting';
 import AdminNetworkOperations from './AdminNetworkOperations';
+import { DashboardProductHero } from './DashboardDesignSystem';
 
 type AdminProfile = {
   id: string;
@@ -422,6 +423,7 @@ export default function AdminDashboard({
 
         <section className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
           <div className="mx-auto max-w-7xl space-y-6">
+            <DashboardProductHero />
             <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-800">Administration</p><h1 className="mt-1 text-2xl sm:text-3xl font-bold text-slate-900">{sectionTitle}</h1><p className="mt-1 text-sm text-slate-500">Live records from the AMANAH Supabase database</p></div>
               <button onClick={() => void refreshDashboard()} disabled={loading} className="inline-flex items-center justify-center gap-2 rounded-xl bg-white border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-60"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh</button>
