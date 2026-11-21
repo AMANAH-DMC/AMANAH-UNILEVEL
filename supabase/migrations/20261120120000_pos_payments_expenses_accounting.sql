@@ -333,8 +333,6 @@ END;
 $function$;
 
 REVOKE ALL ON FUNCTION public.front_desk_create_pos_order(text, text, jsonb) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.front_desk_mark_pos_order_paid(uuid, text, text) FROM PUBLIC, anon, authenticated;
-DROP FUNCTION IF EXISTS public.front_desk_mark_pos_order_paid(uuid, text, text);
 REVOKE ALL ON FUNCTION public.front_desk_get_pos_prices() FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.front_desk_submit_expense(text, text, numeric, text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.admin_review_front_desk_expense(uuid, text, text) FROM PUBLIC, anon;
