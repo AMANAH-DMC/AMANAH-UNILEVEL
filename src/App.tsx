@@ -467,7 +467,7 @@ export default function AmanahApp() {
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [selectedRole, setSelectedRole] = useState<UnilevelRoleId>('distributor');
   const [registrationRole, setRegistrationRole] = useState<'distributor' | 'mobile_stockist' | 'branch_operator'>('distributor');
-  const [registrationManagers, setRegistrationManagers] = useState<{ id: string; member_number: string; full_name: string }[]>([]);
+  const [registrationManagers, setRegistrationManagers] = useState<{ id: string; full_name: string }[]>([]);
   const [selectedManagerId, setSelectedManagerId] = useState('');
   const [portalAccess, setPortalAccess] = useState<'member' | 'admin' | 'front_desk'>('member');
   const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -503,7 +503,7 @@ export default function AmanahApp() {
         setAuthFeedback({ loading: false, status: 'validation_error', message: `Unable to load active Managers: ${error.message}` });
         return;
       }
-      setRegistrationManagers((data || []) as { id: string; member_number: string; full_name: string }[]);
+      setRegistrationManagers((data || []) as { id: string; full_name: string }[]);
     });
     return () => { active = false; };
   }, [authMode]);
@@ -1228,7 +1228,7 @@ export default function AmanahApp() {
                         <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">Select Your Manager *</label>
                         <select required value={selectedManagerId} onChange={(e) => setSelectedManagerId(e.target.value)} disabled={registrationManagers.length === 0} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 outline-none text-sm disabled:bg-slate-100">
                           <option value="">{registrationManagers.length ? 'Choose an active Manager' : 'No active Managers available'}</option>
-                          {registrationManagers.map((manager) => <option key={manager.id} value={manager.id}>{manager.member_number} — {manager.full_name}</option>)}
+                          {registrationManagers.map((manager) => <option key={manager.id} value={manager.id}>{manager.full_name}</option>)}
                         </select>
                         <p className="mt-1.5 text-xs text-slate-500">A Manager assignment is required to submit this application and will be saved to your Branch Operator profile.</p>
                       </div>
