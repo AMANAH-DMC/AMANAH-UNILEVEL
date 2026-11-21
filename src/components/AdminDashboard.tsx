@@ -85,7 +85,7 @@ const navigation = [
   { id: 'commissions', label: 'Commission Management', icon: CircleDollarSign },
   { id: 'sales', label: 'Sales & Accounting', icon: Activity },
   { id: 'products', label: 'Product Management', icon: Package },
-  { id: 'operations', label: 'Branches, Stockists & Expenses', icon: Boxes },
+  { id: 'operations', label: 'Branches & Stockists', icon: Boxes },
 ];
 
 export default function AdminDashboard({
@@ -684,7 +684,7 @@ export default function AdminDashboard({
             {section === 'products' && <ProductPvManagement />}
             {section === 'sales' && <AdminSalesAccounting />}
             {section === 'operations' && (
-              <AdminOperationsManagement />
+              <AdminOperationsManagement mode="branches" />
             )}
           </div>
         </section>
