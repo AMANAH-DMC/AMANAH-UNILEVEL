@@ -1,5 +1,5 @@
--- POS payment capture and front-desk expense approval workflow.
--- Sales are recognized only after an order is marked paid.
+-- POS sales recording with external payment-method labels and front-desk expense approval.
+-- A payment label is not proof that Amanah received or holds funds.
 -- Expenses affect official operating totals only after admin approval.
 
 ALTER TABLE public.front_desk_pos_orders
@@ -17,12 +17,6 @@ BEGIN
       ADD CONSTRAINT front_desk_pos_orders_payment_method_check
       CHECK (payment_method IS NULL OR payment_method IN ('cash', 'transfer'));
   END IF;
-END
-$migration$;
-
-DO $migration$
-BEGIN
-  -- Payment method is a label supplied at order entry, not proof of receipt.
 END
 $migration$;
 
