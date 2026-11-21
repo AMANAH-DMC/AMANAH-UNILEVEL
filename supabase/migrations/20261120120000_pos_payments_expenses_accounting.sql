@@ -33,9 +33,19 @@ BEGIN
 END
 $migration$;
 
-ALTER TABLE public.front_desk_pos_orders
-  ADD CONSTRAINT IF NOT EXISTS front_desk_pos_orders_paid_by_fkey
-  FOREIGN KEY (paid_by) REFERENCES public.member_profiles(id);
+DO $migration$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.front_desk_pos_orders'::regclass
+      AND conname = 'front_desk_pos_orders_paid_by_fkey'
+  ) THEN
+    ALTER TABLE public.front_desk_pos_orders
+      ADD CONSTRAINT front_desk_pos_orders_paid_by_fkey
+      FOREIGN KEY (paid_by) REFERENCES public.member_profiles(id);
+  END IF;
+END
+$migration$;
 
 CREATE INDEX IF NOT EXISTS front_desk_pos_orders_paid_at_idx
   ON public.front_desk_pos_orders (paid_at)
