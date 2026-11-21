@@ -15,7 +15,6 @@ create index if not exists member_profiles_manager_id_idx
 create or replace function public.get_active_managers_for_registration()
 returns table (
   id uuid,
-  member_number text,
   full_name text
 )
 language sql
@@ -23,13 +22,15 @@ stable
 security definer
 set search_path = ''
 as $$
-  select mp.id, mp.member_number::text, mp.full_name::text
+  select mp.id, mp.full_name::text
   from public.member_profiles as mp
   where mp.role = 'manager'::public.amanah_role
     and mp.account_status = 'active'
   order by mp.full_name, mp.member_number;
 $$;
 
+-- Registration loads this minimal directory before a new applicant is authenticated.
+-- Only Manager UUIDs and display names are exposed; member numbers remain private.
 revoke all on function public.get_active_managers_for_registration() from public;
 grant execute on function public.get_active_managers_for_registration() to anon, authenticated;
 
