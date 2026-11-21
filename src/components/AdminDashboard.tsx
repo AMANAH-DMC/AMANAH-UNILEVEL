@@ -378,12 +378,12 @@ export default function AdminDashboard({
   };
 
   const statCards = [
-    { label: 'Total members', value: summary.total_members, icon: Users },
-    { label: 'Active members', value: summary.active_members, icon: BadgeCheck },
-    { label: 'Distributors', value: summary.distributors, icon: Users },
-    { label: 'Mobile stockists', value: summary.mobile_stockists, icon: Boxes },
-    { label: 'Branch operators', value: summary.branch_operators, icon: ClipboardList },
-    { label: 'Managers', value: summary.managers, icon: ShieldCheck },
+    { label: 'Total members', value: summary.total_members, icon: Users, target: 'members' },
+    { label: 'Active members', value: summary.active_members, icon: BadgeCheck, target: 'members' },
+    { label: 'Distributors', value: summary.distributors, icon: Users, target: 'members' },
+    { label: 'Mobile stockists', value: summary.mobile_stockists, icon: Boxes, target: 'members' },
+    { label: 'Branch operators', value: summary.branch_operators, icon: ClipboardList, target: 'members' },
+    { label: 'Managers', value: summary.managers, icon: ShieldCheck, target: 'members' },
   ];
 
   const sectionTitle = navigation.find((item) => item.id === section)?.label || 'Overview';
@@ -454,7 +454,7 @@ export default function AdminDashboard({
                 <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
                   {statCards.map((stat) => {
                     const Icon = stat.icon;
-                    return <article key={stat.label} className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm"><div className="flex items-center justify-between"><p className="text-sm text-slate-500">{stat.label}</p><span className="rounded-xl bg-emerald-50 p-2 text-emerald-800"><Icon className="h-5 w-5" /></span></div><p className="mt-4 text-3xl font-bold tabular-nums text-slate-900">{stat.value.toLocaleString()}</p></article>;
+                    return <button type="button" key={stat.label} onClick={() => setSection(stat.target)} className="group rounded-2xl text-left outline-none transition hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"><article className="h-full rounded-2xl bg-white border border-slate-200 p-5 shadow-sm"><div className="flex items-center justify-between"><p className="text-sm text-slate-500">{stat.label}</p><span className="rounded-xl bg-emerald-50 p-2 text-emerald-800"><Icon className="h-5 w-5" /></span></div><p className="mt-4 text-3xl font-bold tabular-nums text-slate-900">{stat.value.toLocaleString()}</p><p className="mt-2 text-xs font-semibold text-emerald-800 opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">View members →</p></article></button>;
                   })}
                 </div>
                 <div className="grid lg:grid-cols-2 gap-4">
