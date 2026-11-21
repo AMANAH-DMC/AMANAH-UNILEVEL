@@ -199,6 +199,11 @@ export default function DistributorDashboard({ profile, onSignOut }: { profile: 
                   <p className="mt-3 text-4xl font-extrabold tabular-nums">{loading ? '—' : money(summary?.available_commission)}</p>
                   <p className="mt-2 text-xs text-emerald-100/75">Approved commission available for withdrawal</p>
                 </article>
+                <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:col-span-2">
+                  <div className="flex items-center gap-2 text-slate-500"><Wallet className="h-4 w-4" /><span className="text-sm font-semibold">Overall Commission Withdrawn</span></div>
+                  <p className="mt-3 text-3xl font-extrabold text-emerald-950 tabular-nums">{money(summary?.already_claimed)}</p>
+                  <p className="mt-2 text-xs text-slate-500">Total commission already claimed</p>
+                </article>
                 <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="flex items-center gap-2 text-slate-500"><Users className="h-4 w-4" /><span className="text-xs font-semibold uppercase tracking-wide">Total Members</span></div>
                   <p className="mt-3 text-3xl font-extrabold text-emerald-950 tabular-nums">{loading ? '—' : (dashboard?.downline?.length || 0).toLocaleString('en-PH')}</p>
@@ -252,11 +257,6 @@ export default function DistributorDashboard({ profile, onSignOut }: { profile: 
                     <div className="flex items-center justify-between gap-4"><span className="text-sm text-slate-500">Approved JMO / SMO Commission</span><strong className="text-slate-900">{money(summary?.positional_approved)}</strong></div>
                     <div className="flex items-center justify-between gap-4 border-t border-slate-100 pt-4"><span className="text-sm font-semibold text-slate-700">Total Approved</span><strong className="text-lg text-emerald-900">{money(Number(summary?.unilevel_approved || 0) + Number(summary?.positional_approved || 0))}</strong></div>
                   </div>
-                </article>
-                <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <h2 className="font-bold text-slate-900">Overall Commission Withdrawn</h2>
-                  <p className="mt-3 text-3xl font-extrabold text-emerald-950 tabular-nums">{money(summary?.already_claimed)}</p>
-                  <p className="mt-2 text-xs text-slate-500">Total commission already claimed, based on the existing commission summary.</p>
                 </article>
               </section>
             </div>
