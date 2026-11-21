@@ -22,7 +22,7 @@ Deno.serve(async (req: Request) => {
   const mainAdminUserId = Deno.env.get("AMANAH_MAIN_ADMIN_USER_ID");
   const authorization = req.headers.get("Authorization");
 
-  if (!supabaseUrl || !serviceRoleKey || !anonKey || !mainAdminUserId) {
+  if (!supabaseUrl || !serviceRoleKey || !anonKey) {
     console.error("Member password management is missing required server configuration.");
     return json({ error: "Main Admin password management is not configured." }, 503);
   }
@@ -43,17 +43,14 @@ Deno.serve(async (req: Request) => {
     const { data: callerData, error: callerError } = await callerClient.auth.getUser(token);
     if (callerError || !callerData.user) return json({ error: "Main Admin sign-in is required." }, 401);
 
-    if (callerData.user.id !== mainAdminUserId) {
-      return json({ error: "This feature is restricted to the designated Main Admin account." }, 403);
-    }
-
     const { data: callerProfile, error: profileError } = await adminClient
       .from("member_profiles")
-      .select("id, role, account_status")
+      .select("id, role, account_status, is_admin")
       .eq("id", callerData.user.id)
       .maybeSingle();
 
-    if (profileError || callerProfile?.role !== "admin" || callerProfile.account_status !== "active") {
+    const isDesignatedMainAdmin = callerProfile?.is_admin === true || Boolean(mainAdminUserId && callerData.user.id === mainAdminUserId);
+    if (profileError || callerProfile?.role !== "admin" || callerProfile.account_status !== "active" || !isDesignatedMainAdmin) {
       return json({ error: "An active Main Admin account is required." }, 403);
     }
 
