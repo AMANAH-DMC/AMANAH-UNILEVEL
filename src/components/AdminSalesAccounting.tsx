@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshCw, Search, ChevronDown, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import AdminOperationsManagement from './AdminOperationsManagement';
+import AdminFinancialReports from './AdminFinancialReports';
 
 type OrderItem = {
   product_code: string;
@@ -104,6 +105,8 @@ export default function AdminSalesAccounting() {
 
   return (
     <>
+    <div className="space-y-5">
+    <AdminFinancialReports />
     <article className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -181,6 +184,7 @@ export default function AdminSalesAccounting() {
       </div>
     </article>
     <AdminOperationsManagement mode="expenses" />
+    </div>
     </>
   );
 }
