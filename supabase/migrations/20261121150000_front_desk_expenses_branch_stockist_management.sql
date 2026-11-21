@@ -32,7 +32,7 @@ create table if not exists public.amanah_branches (
 
 create table if not exists public.amanah_branch_operator_assignments (
   operator_member_id uuid primary key references public.member_profiles(id) on delete restrict,
-  branch_id uuid not null references public.amanah_branches(id) on delete restrict,
+  branch_id uuid not null unique references public.amanah_branches(id) on delete restrict,
   assigned_by uuid not null references public.member_profiles(id) on delete restrict,
   assigned_at timestamptz not null default now()
 );
