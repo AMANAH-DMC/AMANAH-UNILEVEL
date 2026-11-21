@@ -151,7 +151,7 @@ export default function DistributorDashboard({ profile, onSignOut }: { profile: 
             <p className="mt-1 text-[10px] uppercase tracking-[.2em] text-emerald-200/70">Distributor workspace</p>
           </div>
           <p className="mt-5 px-3 text-[10px] font-bold uppercase tracking-[.2em] text-emerald-200/60">My sections</p>
-          <nav className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:flex lg:flex-col">
+          <nav aria-label="Distributor dashboard sections" className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:flex lg:flex-col">
             {navigation.map((item) => {
               const Icon = item.icon;
               const selected = activeSection === item.id;
