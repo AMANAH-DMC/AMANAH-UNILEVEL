@@ -485,12 +485,32 @@ export default function AmanahApp() {
     message: string;
   }>({ loading: false, status: 'idle', message: '' });
   const [memberProfile, setMemberProfile] = useState<{
-    id: string; member_number: string; full_name: string; role: string; account_status: string;
+    id: string; member_number: string; full_name: string; role: string; account_status: string; sponsor_username?: string | null;
   } | null>(null);
   const [hasAuthenticatedSession, setHasAuthenticatedSession] = useState(false);
   const [activationRole, setActivationRole] = useState<'distributor' | 'mobile_stockist' | 'branch_operator' | 'manager'>('distributor');
   const [sponsorProfileId, setSponsorProfileId] = useState('');
+  const [activeSponsors, setActiveSponsors] = useState<{ id: string; username: string; full_name: string }[]>([]);
   const [generatedActivation, setGeneratedActivation] = useState<{ activation_code: string; assigned_role: string; expires_at: string } | null>(null);
+
+  // Load the active-member sponsor directory only for an authenticated Admin.
+  useEffect(() => {
+    if (!supabase || memberProfile?.role !== 'admin') {
+      setActiveSponsors([]);
+      return;
+    }
+    let active = true;
+    supabase.rpc('get_active_members_for_activation_sponsor').then(({ data, error }) => {
+      if (!active) return;
+      if (error) {
+        setActiveSponsors([]);
+        setAuthFeedback({ loading: false, status: 'validation_error', message: `Unable to load active sponsor usernames: ${error.message}` });
+        return;
+      }
+      setActiveSponsors((data || []) as { id: string; username: string; full_name: string }[]);
+    });
+    return () => { active = false; };
+  }, [memberProfile?.id, memberProfile?.role]);
 
   // Load the limited active-Manager directory only while the registration form is open.
   useEffect(() => {
@@ -635,7 +655,10 @@ export default function AmanahApp() {
       .eq('id', userId)
       .maybeSingle();
     if (error) throw error;
-    return data;
+    if (!data) return data;
+    const { data: sponsorUsername, error: sponsorError } = await supabase.rpc('get_my_sponsor_username');
+    if (sponsorError) throw sponsorError;
+    return { ...data, sponsor_username: sponsorUsername || null };
   };
 
   const completeActivation = async () => {
@@ -1362,6 +1385,9 @@ export default function AmanahApp() {
                       <p className="text-xs font-bold uppercase tracking-wider text-emerald-800">Authenticated member</p>
                       <h3 className="text-lg font-bold text-emerald-950">{memberProfile.full_name}</h3>
                       <p className="text-sm text-emerald-900">{memberProfile.member_number} · {memberProfile.role.replaceAll('_', ' ')}</p>
+                  {memberProfile.role !== 'admin' && (
+                    <p className="mt-1 text-xs text-emerald-800">Sponsor username: <span className="font-semibold">{memberProfile.sponsor_username || 'No sponsor assigned'}</span></p>
+                  )}
                     </div>
                     <button type="button" onClick={handleSignOut} className="text-xs font-semibold text-emerald-900 underline">Sign out</button>
                   </div>
@@ -1376,8 +1402,14 @@ export default function AmanahApp() {
                         <option value="branch_operator">Branch Operator</option>
                         <option value="manager">Manager</option>
                       </select>
-                      <label className="block text-xs font-semibold text-slate-700">Sponsor profile UUID (optional)</label>
-                      <input value={sponsorProfileId} onChange={(e) => setSponsorProfileId(e.target.value)} placeholder="Leave blank if no sponsor" className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-sm" />
+                      <label className="block text-xs font-semibold text-slate-700">Sponsor username (optional)</label>
+                      <select value={sponsorProfileId} onChange={(e) => setSponsorProfileId(e.target.value)} className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-sm">
+                        <option value="">No sponsor assigned</option>
+                        {activeSponsors.map((sponsor) => (
+                          <option key={sponsor.id} value={sponsor.id}>{sponsor.username} — {sponsor.full_name}</option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-slate-600">Any active member may be selected. The activation code stores the member relationship; the new member profile displays the sponsor's username.</p>
                       <button type="button" disabled={authFeedback.loading} onClick={handleGenerateActivation} className="w-full rounded-xl bg-emerald-900 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">Generate one activation code</button>
                       {generatedActivation && (
                         <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 space-y-2">
