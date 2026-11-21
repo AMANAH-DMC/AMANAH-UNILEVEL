@@ -15,7 +15,6 @@ export default function AdminOperationsManagement() {
   const [operators,setOperators]=useState<Operator[]>([]);
   const [stockists,setStockists]=useState<Stockist[]>([]);
   const [expenses,setExpenses]=useState<Expense[]>([]);
-  const [branchId,setBranchId]=useState('');
   const [branchCode,setBranchCode]=useState('');
   const [branchName,setBranchName]=useState('');
   const [address,setAddress]=useState('');
@@ -30,7 +29,6 @@ export default function AdminOperationsManagement() {
   const [to,setTo]=useState(()=>dateString(new Date()));
   const [expenseSearch,setExpenseSearch]=useState('');
   const [expenseTotal,setExpenseTotal]=useState(0);
-  const [expenseCount,setExpenseCount]=useState(0);
   const [expenseOffset,setExpenseOffset]=useState(0);
   const [expenseTotalCount,setExpenseTotalCount]=useState(0);
   const [loading,setLoading]=useState(false);
@@ -63,7 +61,7 @@ export default function AdminOperationsManagement() {
       });
       if(rpcError)throw rpcError;
       const rows=(data||[]) as Expense[];
-      setExpenses(rows);setExpenseTotalCount(Number(rows[0]?.total_count||0));setExpenseCount(rows.length);
+      setExpenses(rows);setExpenseTotalCount(Number(rows[0]?.total_count||0));
       setExpenseTotal(rows.reduce((sum,row)=>sum+Number(row.amount),0));setExpenseOffset(nextOffset);
     }catch(e){setError(e instanceof Error?e.message:'Unable to load expense records.');}
     finally{setLoading(false);}
