@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { LogOut, Plus, Minus, Trash2, Printer, ShoppingCart, CheckCircle2, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { ProductCodeIssuance } from './ProductCodePanels';
+import FrontDeskExpenses from './FrontDeskExpenses';
 import { DashboardProductHero, DashboardSidebar } from './DashboardDesignSystem';
 
 type Profile = { id: string; member_number: string; full_name: string; role: string; account_status: string };
@@ -53,6 +54,7 @@ export default function FrontDeskDashboard({ profile, onSignOut }: { profile: Pr
   return <main className="amanah-dashboard min-h-screen bg-slate-100 pt-20"><div className="mx-auto flex max-w-[1600px] flex-col gap-5 lg:flex-row px-4 py-6"><DashboardSidebar role="Front Desk" onSignOut={onSignOut}/><div id="dashboard-content" className="min-w-0 flex-1 space-y-6"><DashboardProductHero/>
     <header className="flex flex-wrap items-center justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-widest text-emerald-800">AMANAH • Front Desk</p><h1 className="text-3xl font-black text-slate-900">Ordering & POS</h1><p className="text-sm text-slate-500">{profile.full_name} · {profile.member_number}</p></div><button onClick={onSignOut} className="inline-flex items-center gap-2 rounded-xl bg-emerald-950 px-4 py-3 text-sm font-semibold text-white"><LogOut size={16}/> Sign out</button></header>
     <ProductCodeIssuance />
+    <FrontDeskExpenses />
     {error && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"><AlertCircle className="inline mr-2" size={16}/>{error}</div>}
     <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
       <section id="products" className="space-y-4"><div className="rounded-2xl bg-white p-4 shadow-sm border border-slate-200"><h2 className="font-bold mb-3">Select customer price category</h2><div className="grid grid-cols-2 md:grid-cols-5 gap-2">{TYPES.map(t=><button key={t.id} onClick={()=>setType(t.id)} className={`rounded-xl border px-3 py-3 text-sm font-bold ${type===t.id?'bg-emerald-950 text-white border-emerald-950':'bg-white text-slate-700 border-slate-200 hover:border-emerald-700'}`}>{t.label}</button>)}</div><p className="text-xs text-slate-500 mt-3">Walk-in = SRP. Manager = Marketing Officer pricing.</p></div>

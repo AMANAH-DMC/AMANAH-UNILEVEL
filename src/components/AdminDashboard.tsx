@@ -11,6 +11,7 @@ import CommissionManagement from './CommissionManagement';
 import AdminSalesAccounting from './AdminSalesAccounting';
 import StaffAccountManagement from './StaffAccountManagement';
 import MainAdminMemberPasswordManagement from './MainAdminMemberPasswordManagement';
+import AdminOperationsManagement from './AdminOperationsManagement';
 import { DashboardProductHero } from './DashboardDesignSystem';
 
 type AdminProfile = {
@@ -84,7 +85,7 @@ const navigation = [
   { id: 'commissions', label: 'Commission Management', icon: CircleDollarSign },
   { id: 'sales', label: 'Sales & Accounting', icon: Activity },
   { id: 'products', label: 'Product Management', icon: Package },
-  { id: 'operations', label: 'Stockists & Branches', icon: Boxes },
+  { id: 'operations', label: 'Branches, Stockists & Expenses', icon: Boxes },
 ];
 
 export default function AdminDashboard({
@@ -683,10 +684,7 @@ export default function AdminDashboard({
             {section === 'products' && <ProductPvManagement />}
             {section === 'sales' && <AdminSalesAccounting />}
             {section === 'operations' && (
-              <article className="rounded-2xl border border-amber-200 bg-amber-50 p-6 sm:p-8">
-                <h2 className="font-bold text-amber-950">{sectionTitle} integration is pending schema verification</h2>
-                <p className="mt-2 max-w-3xl text-sm leading-relaxed text-amber-900">This panel is intentionally not populated with sample or guessed values. Before enabling edits or financial actions, the existing Supabase columns, RLS policies, and audit requirements must be confirmed and secured with database-side functions.</p>
-              </article>
+              <AdminOperationsManagement />
             )}
           </div>
         </section>
