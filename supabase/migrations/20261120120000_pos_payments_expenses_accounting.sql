@@ -339,6 +339,7 @@ REVOKE ALL ON FUNCTION public.admin_review_front_desk_expense(uuid, text, text) 
 REVOKE ALL ON FUNCTION public.admin_get_sales_accounting_summary(timestamptz, timestamptz) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.admin_list_front_desk_expenses(text, integer) FROM PUBLIC, anon;
 
+REVOKE ALL ON FUNCTION public.front_desk_create_pos_order(text, text, jsonb, text, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.front_desk_create_pos_order(text, text, jsonb, text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.front_desk_get_pos_prices() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.front_desk_submit_expense(text, text, numeric, text) TO authenticated;
