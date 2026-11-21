@@ -47,7 +47,7 @@ export function DashboardSidebar({ role, onSignOut }: { role: string; onSignOut:
         { label: 'Overview', href: '#dashboard-content' },
         { label: 'Account', href: '#account' },
         { label: 'Network', href: '#network' },
-        { label: 'Commissions', href: '#commission-history' },
+        { label: 'Commissions', href: '#commission-summary' },
         { label: 'Withdrawals', href: '#withdrawals' },
       ];
   return <><nav className="flex gap-2 overflow-x-auto pb-1 lg:hidden">{links.map((link)=><a key={link.href} href={link.href} className="shrink-0 rounded-xl border border-emerald-900/10 bg-white px-3 py-2 text-xs font-semibold text-emerald-950 shadow-sm">{link.label}</a>)}</nav><aside className="amanah-sidebar hidden w-60 shrink-0 flex-col rounded-[1.5rem] bg-emerald-950 p-4 text-white shadow-lg lg:flex">
