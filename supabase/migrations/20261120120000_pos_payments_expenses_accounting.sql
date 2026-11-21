@@ -85,8 +85,12 @@ BEGIN
   IF p_payment_method IS NULL OR p_payment_method NOT IN ('cash','transfer') THEN
     RAISE EXCEPTION 'Payment method must be cash or transfer' USING errcode = '22023';
   END IF;
-  IF jsonb_typeof(p_items) <> 'array' OR jsonb_array_length(p_items) < 1 OR jsonb_array_length(p_items) > 100 THEN
-    RAISE EXCEPTION 'Order must contain between 1 and 100 item lines' USING errcode = '22023';
+  IF p_items IS NULL
+     OR jsonb_typeof(p_items) IS DISTINCT FROM 'array'
+     OR jsonb_array_length(p_items) < 1
+     OR jsonb_array_length(p_items) > 100 THEN
+    RAISE EXCEPTION 'Order must contain between 1 and 100 item lines'
+      USING errcode = '22023';
   END IF;
   v_order_id := gen_random_uuid();
   v_order_number := 'FD-' || to_char(now(),'YYYYMMDD') || '-' || upper(substr(replace(gen_random_uuid()::text,'-',''),1,8));
