@@ -43,10 +43,10 @@ export function DashboardSidebar({ role, onSignOut }: { role: string; onSignOut:
     { label: 'Commissions', href: '#commission-history' },
     { label: 'Account', href: '#account' },
   ];
-  return <aside className="amanah-sidebar hidden w-60 shrink-0 flex-col rounded-[1.5rem] bg-emerald-950 p-4 text-white shadow-lg lg:flex">
+  return <><nav className="flex gap-2 overflow-x-auto pb-1 lg:hidden">{links.map((link)=><a key={link.href} href={link.href} className="shrink-0 rounded-xl border border-emerald-900/10 bg-white px-3 py-2 text-xs font-semibold text-emerald-950 shadow-sm">{link.label}</a>)}</nav><aside className="amanah-sidebar hidden w-60 shrink-0 flex-col rounded-[1.5rem] bg-emerald-950 p-4 text-white shadow-lg lg:flex">
     <div className="border-b border-white/10 px-2 pb-5"><p className="text-lg font-black tracking-[.16em]">AMANAH</p><p className="mt-1 text-[10px] uppercase tracking-[.2em] text-emerald-200/70">Premium workspace</p></div>
     <button onClick={() => setExpanded(!expanded)} className="mt-5 flex items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-emerald-200 hover:bg-white/10"><span>{role.replaceAll('_',' ')} menu</span><span>{expanded ? '−' : '+'}</span></button>
     {expanded && <nav className="mt-2 space-y-1">{links.map((link,index)=><a key={link.href} href={link.href} className="block rounded-xl px-3 py-3 text-sm text-emerald-50/85 transition hover:bg-white/10 hover:text-white">{link.label}</a>)}</nav>}
     <div className="mt-auto pt-6"><button onClick={onSignOut} className="w-full rounded-xl border border-amber-200/30 px-3 py-3 text-sm font-semibold text-amber-100 hover:bg-amber-200/10">Sign out</button></div>
-  </aside>;
+  </aside></>;
 }
