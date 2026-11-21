@@ -466,6 +466,9 @@ export default function AmanahApp() {
   // Supabase-Ready Login / Registration Portal State
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [selectedRole, setSelectedRole] = useState<UnilevelRoleId>('distributor');
+  const [registrationRole, setRegistrationRole] = useState<'distributor' | 'mobile_stockist' | 'branch_operator'>('distributor');
+  const [registrationManagers, setRegistrationManagers] = useState<{ id: string; member_number: string; full_name: string }[]>([]);
+  const [selectedManagerId, setSelectedManagerId] = useState('');
   const [portalAccess, setPortalAccess] = useState<'member' | 'admin' | 'front_desk'>('member');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [authForm, setAuthForm] = useState({
@@ -488,6 +491,22 @@ export default function AmanahApp() {
   const [activationRole, setActivationRole] = useState<'distributor' | 'mobile_stockist' | 'branch_operator' | 'manager'>('distributor');
   const [sponsorProfileId, setSponsorProfileId] = useState('');
   const [generatedActivation, setGeneratedActivation] = useState<{ activation_code: string; assigned_role: string; expires_at: string } | null>(null);
+
+  // Load the limited active-Manager directory only while the registration form is open.
+  useEffect(() => {
+    if (authMode !== 'register' || !supabase) return;
+    let active = true;
+    supabase.rpc('get_active_managers_for_registration').then(({ data, error }) => {
+      if (!active) return;
+      if (error) {
+        setRegistrationManagers([]);
+        setAuthFeedback({ loading: false, status: 'validation_error', message: `Unable to load active Managers: ${error.message}` });
+        return;
+      }
+      setRegistrationManagers((data || []) as { id: string; member_number: string; full_name: string }[]);
+    });
+    return () => { active = false; };
+  }, [authMode]);
 
   // Monitor scroll for sticky glassmorphic header transition
   useEffect(() => {
@@ -624,10 +643,15 @@ export default function AmanahApp() {
     if (!authForm.fullName.trim() || !authForm.memberCode.trim()) {
       throw new Error('Enter your full legal name and Admin-issued activation code.');
     }
-    const { error } = await supabase.rpc('register_member', {
+    if (registrationRole === 'branch_operator' && !selectedManagerId) {
+      throw new Error('Select an active Manager before submitting a Branch Operator application.');
+    }
+    const { error } = await supabase.rpc('register_member_for_role', {
       p_activation_code: authForm.memberCode.trim(),
       p_full_name: authForm.fullName.trim(),
       p_mobile_number: null,
+      p_expected_role: registrationRole,
+      p_manager_id: registrationRole === 'branch_operator' ? selectedManagerId : null,
     });
     if (error) throw error;
     const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -665,6 +689,10 @@ export default function AmanahApp() {
     }
     if (authMode === 'register' && (!authForm.fullName.trim() || !authForm.memberCode.trim())) {
       setAuthFeedback({ loading: false, status: 'validation_error', message: 'Full legal name and an Admin-issued activation code are required.' });
+      return;
+    }
+    if (authMode === 'register' && registrationRole === 'branch_operator' && (!selectedManagerId || registrationManagers.length === 0)) {
+      setAuthFeedback({ loading: false, status: 'validation_error', message: registrationManagers.length === 0 ? 'No active Managers are currently available. Branch Operator registration is temporarily unavailable; contact an administrator.' : 'Choose an active Manager for this Branch Operator application.' });
       return;
     }
 
@@ -1103,7 +1131,7 @@ export default function AmanahApp() {
               <div className="mb-6">
                 <h2 className="text-2xl font-bold text-slate-900">
                   {authMode === 'login' && (portalAccess === 'admin' ? 'Admin Portal Sign In' : portalAccess === 'front_desk' ? 'Front Desk Sign In' : 'Member Sign In')}
-                  {authMode === 'register' && 'Register an Amanah Member Profile'}
+                  {authMode === 'register' && `Register as ${registrationRole === 'distributor' ? 'Distributor' : registrationRole === 'mobile_stockist' ? 'Mobile Stockist' : 'Branch Operator'}`}
                   {authMode === 'forgot' && 'Recover Portal Access'}
                 </h2>
                 <p className="text-sm text-slate-500 mt-1">
@@ -1114,7 +1142,7 @@ export default function AmanahApp() {
                       ? 'Use your assigned front-desk username and password.'
                       : 'Enter your assigned username or Member Number.')}
                   {authMode === 'register' &&
-                    'Join our ethical wellness network and community stewardship program.'}
+                    (registrationRole === 'branch_operator' ? 'Branch Operator application — choose the active Manager responsible for your branch.' : registrationRole === 'mobile_stockist' ? 'Mobile Stockist application — use your Admin-issued activation code.' : 'Distributor application — use your Admin-issued activation code.')}
                   {authMode === 'forgot' &&
                     'We will dispatch a secure recovery link to your registered email.'}
                 </p>
@@ -1145,6 +1173,23 @@ export default function AmanahApp() {
               )}
 
               <form onSubmit={handleSupabaseAuthSubmit} className="space-y-5">
+                {authMode === 'register' && (
+                  <section className="space-y-2">
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-600">Choose registration form</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      {([
+                        { id: 'distributor', title: 'Distributor', detail: 'Distributor application' },
+                        { id: 'mobile_stockist', title: 'Mobile Stockist', detail: 'Stockist application' },
+                        { id: 'branch_operator', title: 'Branch Operator', detail: 'Branch application + Manager' },
+                      ] as const).map((item) => (
+                        <button key={item.id} type="button" onClick={() => { setRegistrationRole(item.id); setSelectedManagerId(''); setAuthFeedback({ loading: false, status: 'idle', message: '' }); }} aria-pressed={registrationRole === item.id} className={`rounded-xl border p-3 text-left transition-all ${registrationRole === item.id ? 'border-emerald-800 bg-emerald-50 text-emerald-950' : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300'}`}>
+                          <span className="block text-sm font-bold">{item.title}</span>
+                          <span className="mt-1 block text-[11px] opacity-75">{item.detail}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                )}
                 {authMode === 'register' && (
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div>
@@ -1178,6 +1223,16 @@ export default function AmanahApp() {
                         className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 outline-none text-sm transition-all"
                       />
                     </div>
+                    {registrationRole === 'branch_operator' && (
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">Select Your Manager *</label>
+                        <select required value={selectedManagerId} onChange={(e) => setSelectedManagerId(e.target.value)} disabled={registrationManagers.length === 0} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 outline-none text-sm disabled:bg-slate-100">
+                          <option value="">{registrationManagers.length ? 'Choose an active Manager' : 'No active Managers available'}</option>
+                          {registrationManagers.map((manager) => <option key={manager.id} value={manager.id}>{manager.member_number} — {manager.full_name}</option>)}
+                        </select>
+                        <p className="mt-1.5 text-xs text-slate-500">A Manager assignment is required to submit this application and will be saved to your Branch Operator profile.</p>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1293,7 +1348,7 @@ export default function AmanahApp() {
                       : authMode === 'login'
                       ? 'Access Amanah System'
                       : authMode === 'register'
-                      ? 'Submit Enrollment'
+                      ? `Submit ${registrationRole === 'distributor' ? 'Distributor' : registrationRole === 'mobile_stockist' ? 'Mobile Stockist' : 'Branch Operator'} Application`
                       : 'Send Password Reset Link'}
                   </span>
                   <ArrowRight className="w-4 h-4 text-amber-400" />
