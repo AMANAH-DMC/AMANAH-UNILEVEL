@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshCw, Wallet, CheckCircle2, Clock3, AlertCircle, LogOut, Users, Network, Award, UserRound } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { MonthlyActivityCard, ProductCodeRedemption } from './ProductCodePanels';
-import DistributorCommissionHistory from './DistributorCommissionHistory';
 import DistributorNetworkExplorer from './DistributorNetworkExplorer';
 import { DashboardProductHero, DashboardSidebar } from './DashboardDesignSystem';
 
@@ -263,7 +262,7 @@ export default function DistributorDashboard({ profile, onSignOut }: { profile: 
           </article>
         </section>
 
-        <div id="commission-history"><DistributorCommissionHistory /></div>
+        
 
         <section id="withdrawals" className="grid gap-6 lg:grid-cols-5">
           <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
