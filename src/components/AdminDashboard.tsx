@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   Activity, ArrowDownToLine, ArrowUpRight, BadgeCheck, Boxes, ClipboardList,
   Download, LayoutDashboard, LogOut, Package, RefreshCw, Search, ShieldCheck,
-  Users, Wallet, XCircle, CircleDollarSign, PackageSearch,
+  Users, Wallet, XCircle, CircleDollarSign, PackageSearch, KeyRound,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import WithdrawalsManagement from './WithdrawalsManagement';
@@ -72,6 +72,7 @@ const navigation = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'members', label: 'Member Management', icon: Users },
   { id: 'staff-accounts', label: 'Staff Accounts', icon: ShieldCheck },
+  { id: 'change-password', label: 'Change Password', icon: KeyRound },
   { id: 'activity', label: 'Monthly Activity', icon: Activity },
   { id: 'product-codes', label: 'Product Code Management', icon: PackageSearch },
   { id: 'codes', label: 'Activation Codes', icon: ShieldCheck },
@@ -90,6 +91,11 @@ export default function AdminDashboard({
   onSignOut: () => void;
 }) {
   const [section, setSection] = useState('overview');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [confirmAdminPassword, setConfirmAdminPassword] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const [summary, setSummary] = useState<Summary>(emptySummary);
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [searchInput, setSearchInput] = useState('');
@@ -132,6 +138,36 @@ export default function AdminDashboard({
   const [productCodeTotal, setProductCodeTotal] = useState(0);
   const [productCodeLoading, setProductCodeLoading] = useState(false);
   const pageSize = 25;
+
+  const changeAdminPassword = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setPasswordMessage('');
+    setPasswordError('');
+    if (!supabase) {
+      setPasswordError('Authentication service is unavailable.');
+      return;
+    }
+    if (newAdminPassword.length < 8) {
+      setPasswordError('Password must be at least 8 characters long.');
+      return;
+    }
+    if (newAdminPassword !== confirmAdminPassword) {
+      setPasswordError('The passwords do not match.');
+      return;
+    }
+    setPasswordSaving(true);
+    try {
+      const { error: updateError } = await supabase.auth.updateUser({ password: newAdminPassword });
+      if (updateError) throw updateError;
+      setPasswordMessage('Your Admin password has been changed successfully.');
+      setNewAdminPassword('');
+      setConfirmAdminPassword('');
+    } catch {
+      setPasswordError('Password change failed. Please try again, or use password recovery to sign in first.');
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
 
   const loadSummary = useCallback(async () => {
     if (!supabase) return;
@@ -392,6 +428,22 @@ export default function AdminDashboard({
             {error && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 flex items-start gap-2"><XCircle className="h-4 w-4 mt-0.5 shrink-0" /><span>{error}</span></div>}
 
             {section === 'staff-accounts' && <StaffAccountManagement />}
+            {section === 'change-password' && (
+              <article className="max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl bg-emerald-50 p-3 text-emerald-800"><KeyRound className="h-5 w-5" /></div>
+                  <div><h2 className="font-bold text-slate-900">Change Admin Password</h2><p className="text-sm text-slate-500">Update the password for your currently signed-in Admin account.</p></div>
+                </div>
+                <form onSubmit={changeAdminPassword} className="mt-6 space-y-4">
+                  <div><label htmlFor="admin-new-password" className="mb-1.5 block text-sm font-medium text-slate-700">New password</label><input id="admin-new-password" type="password" autoComplete="new-password" value={newAdminPassword} onChange={(event) => setNewAdminPassword(event.target.value)} minLength={8} required className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-700" placeholder="At least 8 characters" /></div>
+                  <div><label htmlFor="admin-confirm-password" className="mb-1.5 block text-sm font-medium text-slate-700">Confirm new password</label><input id="admin-confirm-password" type="password" autoComplete="new-password" value={confirmAdminPassword} onChange={(event) => setConfirmAdminPassword(event.target.value)} minLength={8} required className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-700" placeholder="Re-enter your new password" /></div>
+                  {passwordError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{passwordError}</p>}
+                  {passwordMessage && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{passwordMessage}</p>}
+                  <button type="submit" disabled={passwordSaving || !newAdminPassword || !confirmAdminPassword} className="rounded-xl bg-emerald-900 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50">{passwordSaving ? 'Changing password…' : 'Change password'}</button>
+                </form>
+                <p className="mt-4 text-xs leading-relaxed text-slate-500">Your new password is sent securely through your current authenticated session. It is not stored in this dashboard.</p>
+              </article>
+            )}
 
             {section === 'overview' && (
               <>
