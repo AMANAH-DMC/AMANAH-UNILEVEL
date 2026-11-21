@@ -3,7 +3,9 @@ import { RefreshCw, CheckCircle2, XCircle, Clock3, Wallet, TrendingUp } from 'lu
 import { supabase } from '../lib/supabase';
 
 type Summary = {
-  paid_order_count: number;
+  order_count: number;
+  cash_sales: number;
+  transfer_sales: number;
   gross_sales: number;
   pending_expenses: number;
   approved_expenses: number;
@@ -86,8 +88,10 @@ export default function AdminSalesAccounting() {
   };
 
   const cards = [
-    { label: 'Paid orders today', value: String(summary?.paid_order_count ?? 0), icon: TrendingUp },
-    { label: 'Gross sales today', value: peso(Number(summary?.gross_sales ?? 0)), icon: Wallet },
+    { label: 'POS orders recorded today', value: String(summary?.order_count ?? 0), icon: TrendingUp },
+    { label: 'Sales recorded today', value: peso(Number(summary?.gross_sales ?? 0)), icon: Wallet },
+    { label: 'Cash-labelled sales', value: peso(Number(summary?.cash_sales ?? 0)), icon: Wallet },
+    { label: 'Transfer-labelled sales', value: peso(Number(summary?.transfer_sales ?? 0)), icon: Wallet },
     { label: 'Approved expenses', value: peso(Number(summary?.approved_expenses ?? 0)), icon: CheckCircle2 },
     { label: 'Net operating total', value: peso(Number(summary?.net_operating_total ?? 0)), icon: TrendingUp },
   ];
@@ -118,6 +122,6 @@ export default function AdminSalesAccounting() {
         {!loading && expenses.length === 0 && <div className="p-10 text-center text-sm text-slate-500"><Clock3 className="mx-auto mb-2 h-5 w-5"/>No expenses in this category.</div>}
       </div>
     </article>
-    <p className="text-xs text-slate-500">Daily figures are based on POS orders marked paid during the current local calendar day and expense submissions created during that day. Net operating total is gross sales less approved expenses; it is not a full profit calculation because cost of goods sold and other accounting adjustments are not yet included.</p>
+    <p className="text-xs text-slate-500">Daily figures are based on POS orders recorded during the current local calendar day and expense submissions created during that day. Payment method totals are labels only; they do not verify receipt of funds by Amanah. Net operating total is recorded sales less approved expenses; it is not a full profit calculation because cost of goods sold and other accounting adjustments are not yet included.</p>
   </div>;
 }
