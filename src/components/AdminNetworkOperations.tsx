@@ -2,12 +2,13 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { RefreshCw, Users, Search, Store, Truck } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
-type Role = 'distributor' | 'mobile_stockist' | 'branch_operator';
+type Role = 'distributor' | 'mobile_stockist' | 'branch_operator' | 'manager';
 type Member = { id: string; member_number: string; full_name: string; role: Role; account_status: string };
 const roles: { value: Role; label: string }[] = [
   { value: 'distributor', label: 'Distributors' },
   { value: 'mobile_stockist', label: 'Mobile stockists' },
   { value: 'branch_operator', label: 'Branch operators' },
+  { value: 'manager', label: 'Managers' },
 ];
 
 export default function AdminNetworkOperations() {
@@ -39,10 +40,10 @@ export default function AdminNetworkOperations() {
   useEffect(() => { void load(); }, [load]);
 
   const activeCount = useMemo(() => rows.filter(r => r.account_status === 'active').length, [rows]);
-  const Icon = role === 'distributor' ? Truck : Store;
+  const Icon = role === 'distributor' || role === 'manager' ? Truck : Store;
 
   return <div className="space-y-5">
-    <div className="grid gap-3 sm:grid-cols-3">
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {roles.map(item => <button key={item.value} onClick={() => setRole(item.value)} className={`rounded-2xl border p-4 text-left transition-colors ${role === item.value ? 'border-emerald-900 bg-emerald-950 text-white' : 'border-slate-200 bg-white text-slate-800 hover:border-emerald-700'}`}><p className="text-xs font-semibold opacity-75">Network directory</p><p className="mt-1 text-lg font-bold">{item.label}</p></button>)}
     </div>
     <div className="grid gap-3 sm:grid-cols-2">
@@ -57,7 +58,7 @@ export default function AdminNetworkOperations() {
       </div>
       {error && <p role="alert" className="m-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}</p>}
       <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Member</th><th className="px-4 py-3">Member number</th><th className="px-4 py-3">Role</th><th className="px-4 py-3">Account status</th></tr></thead><tbody className="divide-y divide-slate-100">{rows.map(member=><tr key={member.id}><td className="px-4 py-3 font-semibold text-slate-900">{member.full_name}</td><td className="px-4 py-3 text-slate-600">{member.member_number || '—'}</td><td className="px-4 py-3 capitalize">{member.role.replaceAll('_',' ')}</td><td className="px-4 py-3"><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs capitalize">{member.account_status}</span></td></tr>)}{!loading && rows.length===0 && <tr><td colSpan={4} className="px-4 py-10 text-center text-slate-500"><Search className="mx-auto mb-2 h-5 w-5"/>No matching records.</td></tr>}</tbody></table></div>
-      <p className="border-t border-slate-100 px-4 py-3 text-xs text-slate-500">Showing up to 200 matching accounts. This is a read-only directory; stock quantities and branch assignments are not represented by the currently verified schema.</p>
+      <p className="border-t border-slate-100 px-4 py-3 text-xs text-slate-500">Showing up to 200 matching accounts. This is a read-only directory; stock quantities and Manager-to-branch assignments are not represented by the currently verified schema.</p>
     </article>
   </div>;
 }
