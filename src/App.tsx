@@ -469,6 +469,7 @@ export default function AmanahApp() {
   const [registrationRole, setRegistrationRole] = useState<'distributor' | 'mobile_stockist' | 'branch_operator'>('distributor');
   const [registrationManagers, setRegistrationManagers] = useState<{ id: string; full_name: string }[]>([]);
   const [selectedManagerId, setSelectedManagerId] = useState('');
+  const [sponsorUsernameInput, setSponsorUsernameInput] = useState('');
   const [portalAccess, setPortalAccess] = useState<'member' | 'admin' | 'front_desk'>('member');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [authForm, setAuthForm] = useState({
@@ -666,6 +667,9 @@ export default function AmanahApp() {
     if (!authForm.fullName.trim() || !authForm.memberCode.trim()) {
       throw new Error('Enter your full legal name and Admin-issued activation code.');
     }
+    if (!sponsorUsernameInput.trim()) {
+      throw new Error('Enter the username of the member who sponsored you.');
+    }
     if (registrationRole === 'branch_operator' && !selectedManagerId) {
       throw new Error('Select an active Manager before submitting a Branch Operator application.');
     }
@@ -675,6 +679,7 @@ export default function AmanahApp() {
       p_mobile_number: null,
       p_expected_role: registrationRole,
       p_manager_id: registrationRole === 'branch_operator' ? selectedManagerId : null,
+      p_sponsor_username: sponsorUsernameInput.trim(),
     });
     if (error) throw error;
     const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -1245,6 +1250,19 @@ export default function AmanahApp() {
                         placeholder="Enter your one-time activation code"
                         className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 outline-none text-sm transition-all"
                       />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">Sponsor Username *</label>
+                      <input
+                        type="text"
+                        required
+                        autoComplete="username"
+                        value={sponsorUsernameInput}
+                        onChange={(e) => setSponsorUsernameInput(e.target.value)}
+                        placeholder="Enter your sponsor's username"
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 outline-none text-sm"
+                      />
+                      <p className="mt-1.5 text-xs text-slate-500">Enter the exact username of the active Amanah member who referred you. The system will verify it during enrollment.</p>
                     </div>
                     {registrationRole === 'branch_operator' && (
                       <div className="sm:col-span-2">
