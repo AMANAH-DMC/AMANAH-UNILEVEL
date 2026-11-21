@@ -9,8 +9,8 @@ type Expense = { id:string; expense_date:string; category:string; amount:number;
 const peso=(v:number)=>new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'}).format(v);
 const dateString=(d:Date)=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
 
-export default function AdminOperationsManagement() {
-  const [tab,setTab]=useState<'branches'|'stockists'|'expenses'>('branches');
+export default function AdminOperationsManagement({ mode = 'branches' }: { mode?: 'branches' | 'expenses' }) {
+  const [tab,setTab]=useState<'branches'|'stockists'|'expenses'>(mode === 'expenses' ? 'expenses' : 'branches');
   const [branches,setBranches]=useState<Branch[]>([]);
   const [operators,setOperators]=useState<Operator[]>([]);
   const [stockists,setStockists]=useState<Stockist[]>([]);
@@ -114,10 +114,10 @@ export default function AdminOperationsManagement() {
   };
 
   return <div className="space-y-5">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-black text-slate-900">Branch & Stockist Operations</h2><p className="mt-1 text-sm text-slate-500">Manage branch records and assign existing operator and stockist accounts. Member profiles are not edited.</p></div><button onClick={()=>tab==='expenses'?void loadExpenses(expenseOffset):void load()} disabled={loading} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold disabled:opacity-50"><RefreshCw size={15} className={loading?'animate-spin':''}/> Refresh</button></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-black text-slate-900">{mode === 'expenses' ? 'Front Desk Expenses' : 'Branch & Stockist Operations'}</h2><p className="mt-1 text-sm text-slate-500">{mode === 'expenses' ? 'Review expenses recorded by Front Desk for Sales & Accounting.' : 'Manage branch records and assign existing operator and stockist accounts. Member profiles are not edited.'}</p></div><button onClick={()=>tab==='expenses'?void loadExpenses(expenseOffset):void load()} disabled={loading} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold disabled:opacity-50"><RefreshCw size={15} className={loading?'animate-spin':''}/> Refresh</button></div>
     {error&&<div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>}
     {notice&&<div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{notice}</div>}
-    <div className="flex flex-wrap gap-2">{([['branches','Branches',Building2],['stockists','Mobile Stockists',Users],['expenses','Front Desk Expenses',Wallet]] as const).map(([id,label,Icon])=><button key={id} onClick={()=>setTab(id)} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold ${tab===id?'bg-emerald-950 text-white':'border border-slate-200 bg-white text-slate-700'}`}><Icon size={16}/>{label}</button>)}</div>
+    <div className="flex flex-wrap gap-2">{(mode === 'expenses' ? ([['expenses','Front Desk Expenses',Wallet]] as const) : ([['branches','Branches',Building2],['stockists','Mobile Stockists',Users]] as const)).map(([id,label,Icon])=><button key={id} onClick={()=>setTab(id)} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold ${tab===id?'bg-emerald-950 text-white':'border border-slate-200 bg-white text-slate-700'}`}><Icon size={16}/>{label}</button>)}</div>
 
     {tab==='branches'&&<div className="space-y-4">
       <form onSubmit={saveBranch} className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3">
