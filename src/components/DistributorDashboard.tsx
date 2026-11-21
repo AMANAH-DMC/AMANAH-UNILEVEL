@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { RefreshCw, Wallet, CheckCircle2, Clock3, AlertCircle, LogOut, Users, Network, Award, Package, UsersRound } from 'lucide-react';
+import { RefreshCw, Wallet, CheckCircle2, AlertCircle, LogOut, Users, Network, Award, Package, UsersRound } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { ProductCodeRedemption } from './ProductCodePanels';
 import DistributorNetworkExplorer from './DistributorNetworkExplorer';
