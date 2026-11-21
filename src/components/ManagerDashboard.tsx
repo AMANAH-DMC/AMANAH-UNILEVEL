@@ -139,29 +139,29 @@ export default function ManagerDashboard({ profile, onSignOut }: { profile: Prof
         <ProductCodeRedemption />
 
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <a href="#account" className="block rounded-2xl outline-none transition hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"><article className="h-full rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center gap-2 text-slate-500"><UserRound className="h-4 w-4" /><span className="text-xs font-semibold uppercase tracking-wide">Personal PV</span></div>
             <p className="mt-3 text-3xl font-extrabold text-emerald-950 tabular-nums">{loading ? '—' : Number(dashboard?.personal_pv || 0).toLocaleString('en-PH')}</p>
             <p className="mt-1 text-xs text-slate-500">From paid purchases</p>
-          </article>
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          </article></a>
+          <a href="#network" className="block rounded-2xl outline-none transition hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"><article className="h-full rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center gap-2 text-slate-500"><Network className="h-4 w-4" /><span className="text-xs font-semibold uppercase tracking-wide">Group PV</span></div>
             <p className="mt-3 text-3xl font-extrabold text-emerald-950 tabular-nums">{loading ? '—' : Number(dashboard?.group_pv || 0).toLocaleString('en-PH')}</p>
             <p className="mt-1 text-xs text-slate-500">Personal PV plus levels 1–10</p>
-          </article>
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          </article></a>
+          <a href="#network" className="block rounded-2xl outline-none transition hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"><article className="h-full rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center gap-2 text-slate-500"><Users className="h-4 w-4" /><span className="text-xs font-semibold uppercase tracking-wide">Direct Referrals</span></div>
             <p className="mt-3 text-3xl font-extrabold text-emerald-950 tabular-nums">{loading ? '—' : dashboard?.direct_referral_count ?? 0}</p>
             <p className="mt-1 text-xs text-slate-500">Personally sponsored members</p>
-          </article>
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          </article></a>
+          <a href="#account" className="block rounded-2xl outline-none transition hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"><article className="h-full rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center gap-2 text-slate-500"><Award className="h-4 w-4" /><span className="text-xs font-semibold uppercase tracking-wide">Current Rank</span></div>
             <p className="mt-3 text-xl font-extrabold capitalize text-emerald-950">{dashboard?.profile?.rank?.replaceAll('_', ' ') || 'Regular Member'}</p>
             <p className="mt-1 text-xs text-slate-500">Rank qualification rules pending configuration</p>
-          </article>
+          </article></a>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-3">
+        <section id="account" className="grid gap-6 lg:grid-cols-3">
           <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="font-bold text-slate-900">My account</h2>
             <dl className="mt-4 space-y-3 text-sm">
@@ -177,7 +177,7 @@ export default function ManagerDashboard({ profile, onSignOut }: { profile: Prof
           </article>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-2">
+        <section id="network" className="grid gap-6 lg:grid-cols-2">
           <article className="rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="border-b border-slate-100 p-5"><h2 className="font-bold text-slate-900">Direct referrals</h2><p className="mt-1 text-xs text-slate-500">Members directly sponsored by you</p></div>
             <div className="divide-y divide-slate-100">
@@ -208,7 +208,7 @@ export default function ManagerDashboard({ profile, onSignOut }: { profile: Prof
         </section>
         <p className="text-xs text-slate-500">{dashboard?.pv_basis || 'PV is based on paid purchase records.'}</p>
 
-        <section className="grid gap-4 lg:grid-cols-3">
+        <section id="commission-history" className="grid gap-4 lg:grid-cols-3">
           <article className="rounded-2xl bg-emerald-950 p-6 text-white shadow-sm lg:col-span-2">
             <div className="flex items-center gap-2 text-emerald-200"><Wallet className="h-5 w-5" /><span className="text-sm font-semibold">Available Commission</span></div>
             <p className="mt-4 text-4xl font-extrabold tabular-nums">{loading ? '—' : money(summary?.available_commission)}</p>
@@ -223,7 +223,7 @@ export default function ManagerDashboard({ profile, onSignOut }: { profile: Prof
           </article>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-5">
+        <section id="withdrawals" className="grid gap-6 lg:grid-cols-5">
           <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
             <h2 className="text-lg font-bold text-slate-900">Request commission payout</h2>
             <p className="mt-1 text-sm text-slate-500">Request all available commission or enter a smaller partial amount. Payment is made externally by GCash or cash after Admin review.</p>
