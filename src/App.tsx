@@ -57,7 +57,8 @@ const BRAND_CONFIG = {
     'https://przfagsgcnesnbjcrksd.supabase.co/storage/v1/object/public/banner/Gemini_Generated_Image_2mzmh32mzmh32mzm.jpg',
   email: 'concierge@amanahproject.com',
   phone: '+63 (33) 555-0194',
-  address: 'Suite 402, Amanah Heritage Center, Mandurriao, Iloilo City 5000',
+  address: 'Brgy. Malungon, Zarraga, in front of Central School, Iloilo Province, Panay.',
+  facebookPageName: 'Amanah Distribution and Marketing Co.',
   socials: {
     instagram: 'https://instagram.com',
     facebook: 'https://facebook.com',
@@ -849,7 +850,6 @@ export default function AmanahApp() {
                       : 'bg-white/10 text-amber-300 border-amber-400/30'
                   }`}
                 >
-                  Project
                 </span>
               </div>
               <span
@@ -1403,7 +1403,7 @@ export default function AmanahApp() {
                   </h1>
 
                   <p className="text-base sm:text-lg text-emerald-100/90 max-w-2xl leading-relaxed font-normal">
-                    The Amanah Project System connects ethical botanical distribution, certified wellness formulations, and community-driven hubs so families and partners can grow with trust and purpose.
+                    Amanah connects ethical botanical distribution, certified wellness formulations, and community-driven hubs so families and partners can grow with trust and purpose.
                   </p>
 
                   {/* Dual Primary CTAs */}
@@ -1957,7 +1957,7 @@ export default function AmanahApp() {
                       </div>
                       <div>
                         <h3 className="text-sm font-bold text-slate-900">
-                          Amanah Central Secretariat
+                          Office Address
                         </h3>
                         <p className="text-sm text-slate-600 mt-0.5">
                           {BRAND_CONFIG.address}
@@ -1984,8 +1984,8 @@ export default function AmanahApp() {
                         <Mail className="w-5 h-5" />
                       </div>
                       <div>
-                        <h3 className="text-sm font-bold text-slate-900">Official Secretariat Email</h3>
-                        <p className="text-sm text-slate-600 mt-0.5">{BRAND_CONFIG.email}</p>
+                        <h3 className="text-sm font-bold text-slate-900">Facebook Page</h3>
+                        <p className="text-sm text-slate-600 mt-0.5">{BRAND_CONFIG.facebookPageName}</p>
                       </div>
                     </div>
                   </div>
@@ -2226,7 +2226,7 @@ export default function AmanahApp() {
               </h4>
               <p className="text-sm leading-relaxed">{BRAND_CONFIG.address}</p>
               <p className="text-sm">{BRAND_CONFIG.phone}</p>
-              <p className="text-sm text-amber-300">{BRAND_CONFIG.email}</p>
+              <p className="text-sm text-amber-300">Facebook: {BRAND_CONFIG.facebookPageName}</p>
               <div className="pt-2">
                 <button
                   onClick={() => {
