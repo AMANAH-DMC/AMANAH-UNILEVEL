@@ -389,7 +389,7 @@ export default function AdminDashboard({
   const sectionTitle = navigation.find((item) => item.id === section)?.label || 'Overview';
 
   return (
-    <main className="min-h-screen bg-slate-100 pt-20">
+    <main id="dashboard-content" className="min-h-screen bg-slate-100 pt-20">
       <div className="min-h-[calc(100vh-5rem)] lg:flex">
         <aside className="w-full lg:w-72 bg-emerald-950 text-white lg:min-h-[calc(100vh-5rem)]">
           <div className="p-6 border-b border-white/10">
