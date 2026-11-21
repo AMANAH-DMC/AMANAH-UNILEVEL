@@ -103,6 +103,7 @@ export default function AdminSalesAccounting() {
   };
 
   return (
+    <>
     <article className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -180,5 +181,6 @@ export default function AdminSalesAccounting() {
       </div>
     </article>
     <AdminOperationsManagement mode="expenses" />
+    </>
   );
 }
