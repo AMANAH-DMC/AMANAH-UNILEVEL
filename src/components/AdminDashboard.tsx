@@ -109,7 +109,8 @@ export default function AdminDashboard({
   const [error, setError] = useState('');
   const [activationRole, setActivationRole] = useState<ActivationRole>('distributor');
   const [sponsorId, setSponsorId] = useState('');
-  const [activationCode, setActivationCode] = useState<{ code: string; role: string; expiresAt: string } | null>(null);
+  const [activationCodesGenerated, setActivationCodesGenerated] = useState<{ code: string; role: string; expiresAt: string }[]>([]);
+  const [activationQuantity, setActivationQuantity] = useState(1);
   const [codeLoading, setCodeLoading] = useState(false);
   const [activationCodes, setActivationCodes] = useState<ActivationCodeRow[]>([]);
   const [activationEvents, setActivationEvents] = useState<ActivationEventRow[]>([]);
@@ -342,22 +343,33 @@ export default function AdminDashboard({
   }, [loadSummary, loadMembers, loadActivationCodes, loadActivationEvents, loadMonthlyActivity, loadAdminProductCodes, section, search]);
 
   const generateCode = async () => {
-    if (!supabase) return;
+    if (!supabase || codeLoading) return;
+    const quantity = Math.min(20, Math.max(1, Math.floor(Number(activationQuantity) || 1)));
+    setActivationQuantity(quantity);
     setCodeLoading(true);
-    setActivationCode(null);
+    setActivationCodesGenerated([]);
     setError('');
+    const generated: { code: string; role: string; expiresAt: string }[] = [];
     try {
-      const { data, error: rpcError } = await supabase.rpc('generate_activation_code', {
-        p_role: activationRole,
-        p_sponsor_id: sponsorId.trim() || null,
-      });
-      if (rpcError) throw rpcError;
-      const row = Array.isArray(data) ? data[0] : data;
-      if (!row?.activation_code) throw new Error('The server did not return an activation code.');
-      setActivationCode({ code: row.activation_code, role: row.assigned_role, expiresAt: row.expires_at });
+      for (let index = 0; index < quantity; index += 1) {
+        const { data, error: rpcError } = await supabase.rpc('generate_activation_code', {
+          p_role: activationRole,
+          p_sponsor_id: sponsorId.trim() || null,
+        });
+        if (rpcError) throw rpcError;
+        const row = Array.isArray(data) ? data[0] : data;
+        if (!row?.activation_code) throw new Error('The server did not return an activation code.');
+        generated.push({ code: row.activation_code, role: row.assigned_role, expiresAt: row.expires_at });
+        setActivationCodesGenerated([...generated]);
+      }
       await Promise.all([loadActivationCodes(0), loadActivationEvents()]);
     } catch (err) {
-      setError(err && typeof err === 'object' && 'message' in err ? String(err.message) : err instanceof Error ? err.message : 'Activation code generation failed.');
+      setError(generated.length
+        ? `Generated ${generated.length} of ${quantity} requested codes. The remaining codes were not generated. ${err && typeof err === 'object' && 'message' in err ? String(err.message) : err instanceof Error ? err.message : 'Activation code generation failed.'}`
+        : err && typeof err === 'object' && 'message' in err ? String(err.message) : err instanceof Error ? err.message : 'Activation code generation failed.');
+      if (generated.length) {
+        try { await Promise.all([loadActivationCodes(0), loadActivationEvents()]); } catch { /* Preserve the generated codes for copying. */ }
+      }
     } finally {
       setCodeLoading(false);
     }
@@ -489,8 +501,24 @@ export default function AdminDashboard({
                   <select value={activationRole} onChange={(event) => setActivationRole(event.target.value as ActivationRole)} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"><option value="distributor">Distributor</option><option value="mobile_stockist">Mobile Stockist</option><option value="branch_operator">Branch Operator</option><option value="manager">Manager</option><option value="front_desk">Front Desk</option></select>
                   <label className="block text-sm font-semibold text-slate-700">Sponsor profile UUID (optional)</label>
                   <input value={sponsorId} onChange={(event) => setSponsorId(event.target.value)} placeholder="Sponsor member profile ID" className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" />
-                  <button onClick={() => void generateCode()} disabled={codeLoading} className="rounded-xl bg-emerald-900 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">{codeLoading ? 'Generating securely…' : 'Generate activation code'}</button>
-                  {activationCode && <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 space-y-2"><p className="text-xs font-bold uppercase tracking-wide text-amber-900">Shown once — copy and share securely</p><code className="block break-all text-sm font-bold text-slate-900">{activationCode.code}</code><p className="text-xs text-slate-600">Role: {activationCode.role} · Expires: {new Date(activationCode.expiresAt).toLocaleString()}</p><button onClick={() => void navigator.clipboard?.writeText(activationCode.code)} className="rounded-lg bg-amber-200 px-3 py-2 text-xs font-bold text-amber-950">Copy code</button></div>}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-slate-700" htmlFor="activation-quantity">Number of codes to generate</label>
+                    <div className="flex max-w-xs items-center gap-3">
+                      <button type="button" aria-label="Decrease quantity" onClick={() => setActivationQuantity((current) => Math.max(1, current - 1))} disabled={codeLoading || activationQuantity <= 1} className="grid h-11 w-11 place-items-center rounded-xl border border-slate-300 bg-white text-xl font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40">−</button>
+                      <input id="activation-quantity" type="number" min={1} max={20} step={1} value={activationQuantity} disabled={codeLoading} onChange={(event) => setActivationQuantity(Math.min(20, Math.max(1, Number(event.target.value) || 1)))} className="h-11 w-24 rounded-xl border border-slate-200 text-center text-lg font-bold tabular-nums" />
+                      <button type="button" aria-label="Increase quantity" onClick={() => setActivationQuantity((current) => Math.min(20, current + 1))} disabled={codeLoading || activationQuantity >= 20} className="grid h-11 w-11 place-items-center rounded-xl border border-slate-300 bg-white text-xl font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40">+</button>
+                    </div>
+                    <p className="text-xs text-slate-500">Choose between 1 and 20 codes per batch.</p>
+                  </div>
+                  <button onClick={() => void generateCode()} disabled={codeLoading} className="rounded-xl bg-emerald-900 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">{codeLoading ? 'Generating securely…' : `Generate ${activationQuantity} activation code${activationQuantity === 1 ? '' : 's'}`}</button>
+                  {activationCodesGenerated.length > 0 && <div className="space-y-3 rounded-xl border border-amber-300 bg-amber-50 p-4">
+                    <div><p className="text-xs font-bold uppercase tracking-wide text-amber-900">Generated codes — shown once</p><p className="mt-1 text-xs text-slate-600">Copy and share each code securely. Plaintext codes cannot be retrieved later.</p></div>
+                    {activationCodesGenerated.map((item, index) => <div key={`${index}-${item.code}`} className="flex flex-col gap-2 border-t border-amber-200 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0"><p className="text-xs font-semibold text-slate-500">Code {index + 1} · {item.role} · Expires {new Date(item.expiresAt).toLocaleString()}</p><code className="mt-1 block break-all text-sm font-bold text-slate-900">{item.code}</code></div>
+                      <button onClick={() => void navigator.clipboard?.writeText(item.code)} className="shrink-0 self-start rounded-lg bg-amber-200 px-3 py-2 text-xs font-bold text-amber-950">Copy code</button>
+                    </div>)}
+                    <button onClick={() => void navigator.clipboard?.writeText(activationCodesGenerated.map((item) => item.code).join('\n'))} className="rounded-lg bg-amber-200 px-3 py-2 text-xs font-bold text-amber-950">Copy all codes</button>
+                  </div>}
                 </article>
 
                 <article className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
