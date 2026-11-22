@@ -112,6 +112,7 @@ begin
     join public.purchase_items pi on pi.purchase_id = p.id
     where p.purchase_status = 'paid'
       and p.created_at >= v_month_start
+      and pi.unilevel_eligible = true
     group by p.member_id
   )
   select
