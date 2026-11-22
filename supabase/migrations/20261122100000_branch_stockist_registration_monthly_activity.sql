@@ -23,7 +23,7 @@ begin
   if auth.uid() is null then
     raise exception 'Authentication required' using errcode = '42501';
   end if;
-  if p_selected_role not in ('distributor','branch_operator','mobile_stockist') then
+  if p_selected_role is null or p_selected_role not in ('distributor','branch_operator','mobile_stockist') then
     raise exception 'Invalid partnership category' using errcode = '22023';
   end if;
   if nullif(trim(p_sponsor_username),'') is null then
