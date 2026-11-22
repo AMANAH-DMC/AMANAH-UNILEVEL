@@ -472,7 +472,9 @@ export default function AmanahApp() {
   const [authForm, setAuthForm] = useState({
     fullName: '',
     memberCode: '',
-    email: '',
+    partnershipCategory: 'distributor',
+    sponsorUsername: '',
+    email: ''
     username: '',
     password: '',
     rememberMe: true,
@@ -622,13 +624,15 @@ export default function AmanahApp() {
 
   const completeActivation = async () => {
     if (!supabase) throw new Error('Supabase is not configured.');
-    if (!authForm.fullName.trim() || !authForm.memberCode.trim()) {
-      throw new Error('Enter your full legal name and Admin-issued activation code.');
+    if (!authForm.fullName.trim() || !authForm.memberCode.trim() || !authForm.partnershipCategory || !authForm.sponsorUsername.trim()) {
+      throw new Error('Enter your full legal name, partnership category, sponsor username, and Admin-issued activation code.');
     }
-    const { error } = await supabase.rpc('register_member', {
+    const { error } = await supabase.rpc('register_member_with_category', {
       p_activation_code: authForm.memberCode.trim(),
       p_full_name: authForm.fullName.trim(),
       p_mobile_number: null,
+      p_selected_role: authForm.partnershipCategory,
+      p_sponsor_username: authForm.sponsorUsername.trim(),
     });
     if (error) throw error;
     const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -664,8 +668,8 @@ export default function AmanahApp() {
       setAuthFeedback({ loading: false, status: 'validation_error', message: 'Password must be at least 6 characters long.' });
       return;
     }
-    if (authMode === 'register' && (!authForm.fullName.trim() || !authForm.memberCode.trim())) {
-      setAuthFeedback({ loading: false, status: 'validation_error', message: 'Full legal name and an Admin-issued activation code are required.' });
+    if (authMode === 'register' && (!authForm.fullName.trim() || !authForm.memberCode.trim() || !authForm.partnershipCategory || !authForm.sponsorUsername.trim())) {
+      setAuthFeedback({ loading: false, status: 'validation_error', message: 'Full legal name, partnership category, sponsor username, and activation code are required.' });
       return;
     }
 
@@ -1141,34 +1145,46 @@ export default function AmanahApp() {
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                        Full Legal Name
+                        Full Legal Name *
                       </label>
                       <div className="relative">
                         <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                        <input
-                          type="text"
-                          value={authForm.fullName}
-                          onChange={(e) =>
-                            setAuthForm({ ...authForm, fullName: e.target.value })
-                          }
-                          placeholder="Fatimah Al-Zahra"
-                          className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 outline-none text-sm transition-all"
-                        />
+                        <input type="text" required value={authForm.fullName}
+                          onChange={(e) => setAuthForm({ ...authForm, fullName: e.target.value })}
+                          placeholder="Full legal name"
+                          className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 outline-none text-sm transition-all" />
                       </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                        Partnership Category *
+                      </label>
+                      <select required value={authForm.partnershipCategory}
+                        onChange={(e) => setAuthForm({ ...authForm, partnershipCategory: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 outline-none text-sm transition-all">
+                        <option value="distributor">Distributor</option>
+                        <option value="branch_operator">Branch Operator</option>
+                        <option value="mobile_stockist">Mobile Stockist</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                        Sponsor Username *
+                      </label>
+                      <input type="text" required autoComplete="off" value={authForm.sponsorUsername}
+                        onChange={(e) => setAuthForm({ ...authForm, sponsorUsername: e.target.value })}
+                        placeholder="Enter sponsor's username"
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 outline-none text-sm transition-all" />
+                      <p className="mt-1 text-xs text-slate-500">Must match the sponsor assigned to the activation code, if preassigned.</p>
                     </div>
                     <div>
                       <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
                         Admin-Issued Activation Code *
                       </label>
-                      <input
-                        type="text"
-                        value={authForm.memberCode}
-                        onChange={(e) =>
-                          setAuthForm({ ...authForm, memberCode: e.target.value })
-                        }
+                      <input type="text" required value={authForm.memberCode}
+                        onChange={(e) => setAuthForm({ ...authForm, memberCode: e.target.value })}
                         placeholder="Enter your one-time activation code"
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 outline-none text-sm transition-all"
-                      />
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 outline-none text-sm transition-all" />
                     </div>
                   </div>
                 )}
