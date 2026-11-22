@@ -33,7 +33,7 @@ begin
   select ac.assigned_role::text, ac.sponsor_id
     into v_code_role, v_code_sponsor
   from public.activation_codes ac
-  where ac.code_hash = encode(digest(upper(trim(p_activation_code)), 'sha256'), 'hex')
+  where ac.code_hash = encode(extensions.digest(upper(trim(p_activation_code)), 'sha256'), 'hex')
     and ac.redeemed_at is null
     and ac.revoked_at is null
     and (ac.expires_at is null or ac.expires_at > now());
