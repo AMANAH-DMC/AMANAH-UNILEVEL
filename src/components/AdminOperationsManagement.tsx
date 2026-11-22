@@ -157,7 +157,7 @@ export default function AdminOperationsManagement({ mode = 'branches' }: { mode?
         <td className="px-4 py-3"><input value={notes[s.member_id]??s.notes} onChange={e=>setNotes(v=>({...v,[s.member_id]:e.target.value}))} maxLength={500} className="w-40 rounded-lg border border-slate-200 px-2 py-2 text-xs" placeholder="Optional notes"/></td>
         <td className="px-4 py-3 capitalize">{s.assignment_status}</td><td className="px-4 py-3"><div className="flex gap-2"><button disabled={saving||s.account_status!=='active'} onClick={()=>void assignStockist(s.member_id)} className="rounded-lg bg-emerald-900 px-3 py-2 text-xs font-bold text-white disabled:opacity-40">Save</button>{s.assignment_status!=='unassigned'&&<button disabled={saving} onClick={()=>void setStockistStatus(s.member_id,s.assignment_status==='active'?'inactive':'active')} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold disabled:opacity-40">{s.assignment_status==='active'?'Deactivate':'Reactivate'}</button>}</div></td>
       </tr>)}{!loading&&stockists.length===0&&<tr><td colSpan={8} className="px-4 py-8 text-center text-slate-500">No Mobile Stockist accounts found.</td></tr>}</tbody>
-    </table></div><p className="text-xs text-slate-500">Stockist figures reflect qualifying personal paid purchases and PV for the current Manila calendar month.</p>}
+    </table><p className="text-xs text-slate-500">Stockist figures reflect qualifying personal paid purchases and PV for the current Manila calendar month.</p></div>}
 
 
     {tab==='expenses'&&<div className="space-y-4">
