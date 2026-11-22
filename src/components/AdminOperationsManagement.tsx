@@ -6,6 +6,7 @@ type Branch = { id:string; branch_code:string; branch_name:string; address:strin
 type Operator = { member_id:string; member_number:string|null; full_name:string; account_status:string; branch_id:string|null; branch_name:string|null };
 type Stockist = { member_id:string; member_number:string|null; full_name:string; account_status:string; assignment_status:string; branch_id:string|null; branch_name:string|null; service_area:string; notes:string };
 type Expense = { id:string; expense_date:string; category:string; amount:number; description:string; created_at:string; created_by_name:string; created_by_member_number:string|null; total_count:number };
+type MonthlyPurchaseActivity = { member_id:string; member_number:string|null; full_name:string; role:string; account_status:string; branch_name:string|null; purchase_count:number; purchase_pv:number; month_start:string };
 const peso=(v:number)=>new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'}).format(v);
 const dateString=(d:Date)=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
 
@@ -14,6 +15,7 @@ export default function AdminOperationsManagement({ mode = 'branches' }: { mode?
   const [branches,setBranches]=useState<Branch[]>([]);
   const [operators,setOperators]=useState<Operator[]>([]);
   const [stockists,setStockists]=useState<Stockist[]>([]);
+  const [monthlyPurchaseActivity,setMonthlyPurchaseActivity]=useState<Record<string,MonthlyPurchaseActivity>>({});
   const [expenses,setExpenses]=useState<Expense[]>([]);
   const [branchCode,setBranchCode]=useState('');
   const [branchName,setBranchName]=useState('');
@@ -41,13 +43,20 @@ export default function AdminOperationsManagement({ mode = 'branches' }: { mode?
     if(!supabase){setError('Supabase is unavailable.');return;}
     setLoading(true);setError('');
     try{
-      const [b,o,s]=await Promise.all([
+      const [b,o,s,m]=await Promise.all([
         supabase.rpc('admin_list_branches'),
         supabase.rpc('admin_list_branch_operators'),
         supabase.rpc('admin_list_mobile_stockists'),
+        supabase.rpc('admin_get_branch_stockist_monthly_purchase_activity'),
       ]);
       if(b.error)throw b.error;if(o.error)throw o.error;if(s.error)throw s.error;
       setBranches((b.data||[]) as Branch[]);setOperators((o.data||[]) as Operator[]);setStockists((s.data||[]) as Stockist[]);
+      if(m.error){
+        setMonthlyPurchaseActivity({});
+        setError(`Branch and stockist records loaded, but monthly purchase activity is unavailable: ${m.error.message}`);
+      }else{
+        setMonthlyPurchaseActivity(Object.fromEntries(((m.data||[]) as MonthlyPurchaseActivity[]).map(row=>[row.member_id,row])));
+      }
     }catch(e){setError(e instanceof Error?e.message:'Unable to load branch and stockist records.');}
     finally{setLoading(false);}
   },[]);
@@ -131,27 +140,30 @@ export default function AdminOperationsManagement({ mode = 'branches' }: { mode?
         </div>
         <div className="flex gap-2"><button disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-emerald-950 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"><Save size={15}/>{saving?'Saving…':'Save branch'}</button>{editingId&&<button type="button" onClick={resetBranch} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold">Cancel edit</button>}</div>
       </form>
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white"><table className="w-full min-w-[900px] text-left text-sm">
-        <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Branch</th><th className="px-4 py-3">Address / Contact</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Assigned operator</th><th className="px-4 py-3">Assign</th><th className="px-4 py-3"></th></tr></thead>
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white"><table className="w-full min-w-[1100px] text-left text-sm">
+        <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Branch</th><th className="px-4 py-3">Address / Contact</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Assigned operator</th><th className="px-4 py-3">Operator qualifying paid purchases</th><th className="px-4 py-3">Assign</th><th className="px-4 py-3"></th></tr></thead>
         <tbody className="divide-y divide-slate-100">{branches.map(b=><tr key={b.id}>
           <td className="px-4 py-3"><b>{b.branch_name}</b><p className="text-xs text-slate-500">{b.branch_code}</p></td><td className="px-4 py-3">{b.address||'—'}<p className="text-xs text-slate-500">{b.contact_number||'—'}</p></td><td className="px-4 py-3 capitalize">{b.status}</td><td className="px-4 py-3">{b.operator_name||'Not assigned'}<p className="text-xs text-slate-500">{b.operator_member_number||''}</p></td>
+          <td className="px-4 py-3"><b>{monthlyPurchaseActivity[b.operator_member_id||'']?.purchase_count||0} paid</b><p className="text-xs text-slate-500">{Number(monthlyPurchaseActivity[b.operator_member_id||'']?.purchase_pv||0).toLocaleString('en-PH')} PV</p></td>
           <td className="px-4 py-3"><div className="flex gap-2"><select value={operatorChoices[b.id]??b.operator_member_id??''} onChange={e=>setOperatorChoices(v=>({...v,[b.id]:e.target.value}))} className="max-w-[190px] rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs"><option value="">Choose operator</option>{operators.filter(o=>o.account_status==='active').map(o=><option key={o.member_id} value={o.member_id}>{o.full_name} · {o.member_number||'No ID'}</option>)}</select><button disabled={saving||b.status!=='active'} onClick={()=>void assignOperator(b)} className="rounded-lg bg-emerald-900 px-3 py-2 text-xs font-bold text-white disabled:opacity-40">Assign</button></div></td>
           <td className="px-4 py-3"><button onClick={()=>editBranch(b)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold">Edit</button></td>
-        </tr>)}{!loading&&branches.length===0&&<tr><td colSpan={6} className="px-4 py-8 text-center text-slate-500">No branches registered yet.</td></tr>}</tbody>
+        </tr>)}{!loading&&branches.length===0&&<tr><td colSpan={7} className="px-4 py-8 text-center text-slate-500">No branches registered yet.</td></tr>}</tbody>
       </table></div>
-      <p className="text-xs text-slate-500">Branch records and operator assignments are stored separately from member profiles. Existing sponsor relationships are not changed.</p>
+      <p className="text-xs text-slate-500">Branch figures reflect the assigned operator’s qualifying personal paid purchases and PV for the current Manila calendar month, not branch POS sales. Branch records and operator assignments are stored separately from member profiles. Existing sponsor relationships are not changed.</p>
     </div>}
 
-    {tab==='stockists'&&<div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white"><table className="w-full min-w-[1050px] text-left text-sm">
-      <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Mobile Stockist</th><th className="px-4 py-3">Account</th><th className="px-4 py-3">Branch</th><th className="px-4 py-3">Service area</th><th className="px-4 py-3">Notes</th><th className="px-4 py-3">Assignment</th><th className="px-4 py-3">Action</th></tr></thead>
+    {tab==='stockists'&&<div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white"><table className="w-full min-w-[1200px] text-left text-sm">
+      <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Mobile Stockist</th><th className="px-4 py-3">Account</th><th className="px-4 py-3">Stockist qualifying paid purchases</th><th className="px-4 py-3">Branch</th><th className="px-4 py-3">Service area</th><th className="px-4 py-3">Notes</th><th className="px-4 py-3">Assignment</th><th className="px-4 py-3">Action</th></tr></thead>
       <tbody className="divide-y divide-slate-100">{stockists.map(s=><tr key={s.member_id}>
         <td className="px-4 py-3"><b>{s.full_name}</b><p className="text-xs text-slate-500">{s.member_number||'No member number'}</p></td><td className="px-4 py-3 capitalize">{s.account_status}</td>
+        <td className="px-4 py-3"><b>{monthlyPurchaseActivity[s.member_id]?.purchase_count||0} paid</b><p className="text-xs text-slate-500">{Number(monthlyPurchaseActivity[s.member_id]?.purchase_pv||0).toLocaleString('en-PH')} PV</p></td>
         <td className="px-4 py-3"><select value={stockistChoices[s.member_id]??s.branch_id??''} onChange={e=>setStockistChoices(v=>({...v,[s.member_id]:e.target.value}))} className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs"><option value="">No branch</option>{branches.filter(b=>b.status==='active').map(b=><option key={b.id} value={b.id}>{b.branch_name}</option>)}</select></td>
         <td className="px-4 py-3"><input value={serviceAreas[s.member_id]??s.service_area} onChange={e=>setServiceAreas(v=>({...v,[s.member_id]:e.target.value}))} maxLength={160} className="w-40 rounded-lg border border-slate-200 px-2 py-2 text-xs" placeholder="Area"/></td>
         <td className="px-4 py-3"><input value={notes[s.member_id]??s.notes} onChange={e=>setNotes(v=>({...v,[s.member_id]:e.target.value}))} maxLength={500} className="w-40 rounded-lg border border-slate-200 px-2 py-2 text-xs" placeholder="Optional notes"/></td>
         <td className="px-4 py-3 capitalize">{s.assignment_status}</td><td className="px-4 py-3"><div className="flex gap-2"><button disabled={saving||s.account_status!=='active'} onClick={()=>void assignStockist(s.member_id)} className="rounded-lg bg-emerald-900 px-3 py-2 text-xs font-bold text-white disabled:opacity-40">Save</button>{s.assignment_status!=='unassigned'&&<button disabled={saving} onClick={()=>void setStockistStatus(s.member_id,s.assignment_status==='active'?'inactive':'active')} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold disabled:opacity-40">{s.assignment_status==='active'?'Deactivate':'Reactivate'}</button>}</div></td>
-      </tr>)}{!loading&&stockists.length===0&&<tr><td colSpan={7} className="px-4 py-8 text-center text-slate-500">No Mobile Stockist accounts found.</td></tr>}</tbody>
-    </table></div>}
+      </tr>)}{!loading&&stockists.length===0&&<tr><td colSpan={8} className="px-4 py-8 text-center text-slate-500">No Mobile Stockist accounts found.</td></tr>}</tbody>
+    </table><p className="text-xs text-slate-500">Stockist figures reflect qualifying personal paid purchases and PV for the current Manila calendar month.</p></div>}
+
 
     {tab==='expenses'&&<div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2"><label className="text-xs font-semibold text-slate-600">From<input type="date" value={from} onChange={e=>setFrom(e.target.value)} className="mt-1 block rounded-lg border border-slate-200 px-3 py-2 text-sm"/></label><label className="text-xs font-semibold text-slate-600">To<input type="date" value={to} onChange={e=>setTo(e.target.value)} className="mt-1 block rounded-lg border border-slate-200 px-3 py-2 text-sm"/></label><label className="text-xs font-semibold text-slate-600 sm:col-span-2">Search<input value={expenseSearch} onChange={e=>setExpenseSearch(e.target.value)} placeholder="Description, category, staff name or member number" className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"/></label><button onClick={()=>void loadExpenses(0)} className="w-fit rounded-lg bg-emerald-950 px-4 py-2 text-sm font-bold text-white">Apply filters</button></div>
