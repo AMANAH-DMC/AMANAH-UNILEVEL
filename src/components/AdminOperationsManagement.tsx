@@ -51,7 +51,7 @@ export default function AdminOperationsManagement({ mode = 'branches' }: { mode?
       ]);
       if(b.error)throw b.error;if(o.error)throw o.error;if(s.error)throw s.error;if(m.error)throw m.error;
       setBranches((b.data||[]) as Branch[]);setOperators((o.data||[]) as Operator[]);setStockists((s.data||[]) as Stockist[]);
-      setMonthlyPurchaseActivity(Object.fromEntries(((m.data||[]) as MonthlyPurchaseActivity[]).map(row=>[row.member_id,row]));
+      setMonthlyPurchaseActivity(Object.fromEntries(((m.data||[]) as MonthlyPurchaseActivity[]).map(row=>[row.member_id,row])));
     }catch(e){setError(e instanceof Error?e.message:'Unable to load branch and stockist records.');}
     finally{setLoading(false);}
   },[]);
