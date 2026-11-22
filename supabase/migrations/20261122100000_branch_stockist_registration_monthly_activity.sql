@@ -36,7 +36,8 @@ begin
   where ac.code_hash = encode(extensions.digest(upper(trim(p_activation_code)), 'sha256'), 'hex')
     and ac.redeemed_at is null
     and ac.revoked_at is null
-    and (ac.expires_at is null or ac.expires_at > now());
+    and (ac.expires_at is null or ac.expires_at > now())
+  for update;
 
   if v_code_role is null then
     raise exception 'Activation code is invalid, redeemed, revoked, or expired' using errcode = '22023';
@@ -112,6 +113,7 @@ begin
     join public.purchase_items pi on pi.purchase_id = p.id
     where p.purchase_status = 'paid'
       and p.created_at >= v_month_start
+      and p.created_at < (v_month_start + interval '1 month')
       and pi.unilevel_eligible = true
     group by p.member_id
   )
