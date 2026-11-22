@@ -474,7 +474,7 @@ export default function AmanahApp() {
     memberCode: '',
     partnershipCategory: 'distributor',
     sponsorUsername: '',
-    email: ''
+    email: '',
     username: '',
     password: '',
     rememberMe: true,
