@@ -144,7 +144,7 @@ export default function AdminOperationsManagement({ mode = 'branches' }: { mode?
           <td className="px-4 py-3"><button onClick={()=>editBranch(b)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold">Edit</button></td>
         </tr>)}{!loading&&branches.length===0&&<tr><td colSpan={7} className="px-4 py-8 text-center text-slate-500">No branches registered yet.</td></tr>}</tbody>
       </table></div>
-      <p className="text-xs text-slate-500">Monthly figures show the assigned Branch Operator’s own qualifying paid purchases and PV, not branch POS sales. Branch figures reflect the assigned operator’s qualifying personal paid purchases and PV for the current Manila calendar month, not branch POS sales. Branch records and operator assignments are stored separately from member profiles. Existing sponsor relationships are not changed.</p>
+      <p className="text-xs text-slate-500">Branch figures reflect the assigned operator’s qualifying personal paid purchases and PV for the current Manila calendar month, not branch POS sales. Branch records and operator assignments are stored separately from member profiles. Existing sponsor relationships are not changed.</p>
     </div>}
 
     {tab==='stockists'&&<div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white"><table className="w-full min-w-[1200px] text-left text-sm">
