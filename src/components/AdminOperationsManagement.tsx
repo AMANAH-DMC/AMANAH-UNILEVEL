@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Building2, RefreshCw, Save, Users, Wallet } from 'lucide-react';
+import { Building2, RefreshCw, Users, Wallet } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 type Branch = { id:string; branch_code:string; branch_name:string; address:string; contact_number:string; status:string; operator_member_id:string|null; operator_name:string|null; operator_member_number:string|null };
@@ -17,12 +17,6 @@ export default function AdminOperationsManagement({ mode = 'branches' }: { mode?
   const [stockists,setStockists]=useState<Stockist[]>([]);
   const [monthlyPurchaseActivity,setMonthlyPurchaseActivity]=useState<Record<string,MonthlyPurchaseActivity>>({});
   const [expenses,setExpenses]=useState<Expense[]>([]);
-  const [branchCode,setBranchCode]=useState('');
-  const [branchName,setBranchName]=useState('');
-  const [address,setAddress]=useState('');
-  const [contact,setContact]=useState('');
-  const [branchStatus,setBranchStatus]=useState('active');
-  const [editingId,setEditingId]=useState<string|null>(null);
   const [operatorChoices,setOperatorChoices]=useState<Record<string,string>>({});
   const [stockistChoices,setStockistChoices]=useState<Record<string,string>>({});
   const [serviceAreas,setServiceAreas]=useState<Record<string,string>>({});
@@ -78,23 +72,6 @@ export default function AdminOperationsManagement({ mode = 'branches' }: { mode?
 
   useEffect(()=>{if(tab==='expenses')void loadExpenses(0);else void load();},[tab,load,loadExpenses]);
 
-  const editBranch=(b:Branch)=>{
-    setEditingId(b.id);setBranchCode(b.branch_code);setBranchName(b.branch_name);setAddress(b.address||'');setContact(b.contact_number||'');setBranchStatus(b.status);
-  };
-  const resetBranch=()=>{setEditingId(null);setBranchCode('');setBranchName('');setAddress('');setContact('');setBranchStatus('active');};
-  const saveBranch=async(event:React.FormEvent)=>{
-    event.preventDefault();if(!supabase||saving)return;
-    setSaving(true);setError('');setNotice('');
-    try{
-      const {data,error:rpcError}=await supabase.rpc('admin_save_branch',{
-        p_branch_id:editingId,p_branch_code:branchCode.trim(),p_branch_name:branchName.trim(),
-        p_address:address.trim(),p_contact_number:contact.trim(),p_status:branchStatus,
-      });
-      if(rpcError)throw rpcError;if(!data)throw new Error('The branch was not saved.');
-      setNotice(editingId?'Branch details updated.':'Branch created.');resetBranch();await load();
-    }catch(e){setError(e instanceof Error?e.message:'Unable to save branch.');}
-    finally{setSaving(false);}
-  };
   const assignOperator=async(branch:Branch)=>{
     if(!supabase)return;const memberId=operatorChoices[branch.id]||branch.operator_member_id;
     if(!memberId){setError('Select an active Branch Operator first.');return;}
@@ -129,25 +106,13 @@ export default function AdminOperationsManagement({ mode = 'branches' }: { mode?
     <div className="flex flex-wrap gap-2">{(mode === 'expenses' ? ([['expenses','Front Desk Expenses',Wallet]] as const) : ([['branches','Branches',Building2],['stockists','Mobile Stockists',Users]] as const)).map(([id,label,Icon])=><button key={id} onClick={()=>setTab(id)} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold ${tab===id?'bg-emerald-950 text-white':'border border-slate-200 bg-white text-slate-700'}`}><Icon size={16}/>{label}</button>)}</div>
 
     {tab==='branches'&&<div className="space-y-4">
-      <form onSubmit={saveBranch} className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3">
-        <h3 className="font-bold">{editingId?'Edit branch':'Register a branch'}</h3>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="text-xs font-semibold text-slate-600">Branch code<input required maxLength={30} value={branchCode} onChange={e=>setBranchCode(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"/></label>
-          <label className="text-xs font-semibold text-slate-600">Branch name<input required maxLength={120} value={branchName} onChange={e=>setBranchName(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"/></label>
-          <label className="text-xs font-semibold text-slate-600">Address<input value={address} onChange={e=>setAddress(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"/></label>
-          <label className="text-xs font-semibold text-slate-600">Contact number<input value={contact} onChange={e=>setContact(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"/></label>
-          {editingId&&<label className="text-xs font-semibold text-slate-600">Branch status<select value={branchStatus} onChange={e=>setBranchStatus(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="active">Active</option><option value="inactive">Inactive</option></select></label>}
-        </div>
-        <div className="flex gap-2"><button disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-emerald-950 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"><Save size={15}/>{saving?'Saving…':'Save branch'}</button>{editingId&&<button type="button" onClick={resetBranch} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold">Cancel edit</button>}</div>
-      </form>
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white"><table className="w-full min-w-[1100px] text-left text-sm">
-        <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Branch</th><th className="px-4 py-3">Address / Contact</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Assigned operator</th><th className="px-4 py-3">Operator qualifying paid purchases</th><th className="px-4 py-3">Assign</th><th className="px-4 py-3"></th></tr></thead>
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white"><table className="w-full min-w-[1000px] text-left text-sm">
+        <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Branch</th><th className="px-4 py-3">Address / Contact</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Assigned operator</th><th className="px-4 py-3">Operator qualifying paid purchases</th><th className="px-4 py-3">Assign</th></tr></thead>
         <tbody className="divide-y divide-slate-100">{branches.map(b=><tr key={b.id}>
           <td className="px-4 py-3"><b>{b.branch_name}</b><p className="text-xs text-slate-500">{b.branch_code}</p></td><td className="px-4 py-3">{b.address||'—'}<p className="text-xs text-slate-500">{b.contact_number||'—'}</p></td><td className="px-4 py-3 capitalize">{b.status}</td><td className="px-4 py-3">{b.operator_name||'Not assigned'}<p className="text-xs text-slate-500">{b.operator_member_number||''}</p></td>
           <td className="px-4 py-3"><b>{monthlyPurchaseActivity[b.operator_member_id||'']?.purchase_count||0} paid</b><p className="text-xs text-slate-500">{Number(monthlyPurchaseActivity[b.operator_member_id||'']?.purchase_pv||0).toLocaleString('en-PH')} PV</p></td>
           <td className="px-4 py-3"><div className="flex gap-2"><select value={operatorChoices[b.id]??b.operator_member_id??''} onChange={e=>setOperatorChoices(v=>({...v,[b.id]:e.target.value}))} className="max-w-[190px] rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs"><option value="">Choose operator</option>{operators.filter(o=>o.account_status==='active').map(o=><option key={o.member_id} value={o.member_id}>{o.full_name} · {o.member_number||'No ID'}</option>)}</select><button disabled={saving||b.status!=='active'} onClick={()=>void assignOperator(b)} className="rounded-lg bg-emerald-900 px-3 py-2 text-xs font-bold text-white disabled:opacity-40">Assign</button></div></td>
-          <td className="px-4 py-3"><button onClick={()=>editBranch(b)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold">Edit</button></td>
-        </tr>)}{!loading&&branches.length===0&&<tr><td colSpan={7} className="px-4 py-8 text-center text-slate-500">No branches registered yet.</td></tr>}</tbody>
+        </tr>)}{!loading&&branches.length===0&&<tr><td colSpan={6} className="px-4 py-8 text-center text-slate-500">No branches registered yet.</td></tr>}</tbody>
       </table></div>
       <p className="text-xs text-slate-500">Branch figures reflect the assigned operator’s qualifying personal paid purchases and PV for the current Manila calendar month, not branch POS sales. Branch records and operator assignments are stored separately from member profiles. Existing sponsor relationships are not changed.</p>
     </div>}
