@@ -5,7 +5,7 @@ begin;
 create or replace function public.register_member_with_category(
   p_activation_code text,
   p_full_name text,
-  p_mobile_number text default null,
+  p_mobile_number text,
   p_selected_role text,
   p_sponsor_username text
 )
