@@ -226,4 +226,141 @@ revoke all on function public.register_member_with_category(text,text,text,text,
 grant execute on function public.register_member_with_category(text,text,text,text,text) to authenticated;
 
 
+CREATE OR REPLACE FUNCTION public.get_member_commission_summary()
+RETURNS TABLE (
+  unilevel_approved numeric,
+  positional_approved numeric,
+  already_claimed numeric,
+  available_commission numeric,
+  withdrawal_threshold numeric,
+  eligible_to_withdraw boolean
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $
+DECLARE
+  v_member_id uuid := auth.uid();
+  v_role text;
+  v_unilevel numeric := 0;
+  v_positional numeric := 0;
+  v_claimed numeric := 0;
+  v_available numeric := 0;
+BEGIN
+  IF v_member_id IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+
+  SELECT mp.role::text
+    INTO v_role
+    FROM public.member_profiles mp
+   WHERE mp.id = v_member_id
+     AND mp.account_status = 'active';
+
+  IF NOT FOUND OR v_role not in ('distributor','manager') THEN
+    RAISE EXCEPTION 'An active Distributor or Manager account is required';
+  END IF;
+
+  SELECT COALESCE(sum(cl.commission_amount), 0)
+    INTO v_unilevel
+    FROM public.commission_ledger cl
+   WHERE cl.earner_id = v_member_id
+     AND cl.status = 'approved';
+
+  SELECT COALESCE(sum(pcl.commission_amount), 0)
+    INTO v_positional
+    FROM public.positional_commission_ledger pcl
+   WHERE pcl.earner_id = v_member_id
+     AND pcl.status = 'approved';
+
+  SELECT COALESCE(sum(wr.requested_amount), 0)
+    INTO v_claimed
+    FROM public.withdrawal_requests wr
+   WHERE wr.member_id = v_member_id
+     AND wr.status IN ('pending', 'approved', 'paid');
+
+  v_available := GREATEST(v_unilevel + v_positional - v_claimed, 0);
+
+  RETURN QUERY SELECT
+    v_unilevel,
+    v_positional,
+    v_claimed,
+    v_available,
+    300::numeric,
+    v_available >= 300;
+END;
+$;
+
+CREATE OR REPLACE FUNCTION public.request_commission_withdrawal(p_amount numeric)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $
+DECLARE
+  v_member_id uuid := auth.uid();
+  v_role text;
+  v_unilevel numeric := 0;
+  v_positional numeric := 0;
+  v_claimed numeric := 0;
+  v_available numeric := 0;
+  v_request_id uuid;
+BEGIN
+  IF v_member_id IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+  IF p_amount IS NULL OR p_amount <= 0 OR p_amount <> round(p_amount, 2) THEN
+    RAISE EXCEPTION 'Enter a valid withdrawal amount greater than zero with up to two decimal places';
+  END IF;
+
+  -- Serializes requests for the same member to prevent duplicate over-claims.
+  SELECT mp.role::text
+    INTO v_role
+    FROM public.member_profiles mp
+   WHERE mp.id = v_member_id
+     AND mp.account_status = 'active'
+   FOR UPDATE;
+
+  IF NOT FOUND OR v_role not in ('distributor','manager') THEN
+    RAISE EXCEPTION 'An active Distributor or Manager account is required';
+  END IF;
+
+  SELECT COALESCE(sum(cl.commission_amount), 0)
+    INTO v_unilevel
+    FROM public.commission_ledger cl
+   WHERE cl.earner_id = v_member_id AND cl.status = 'approved';
+
+  SELECT COALESCE(sum(pcl.commission_amount), 0)
+    INTO v_positional
+    FROM public.positional_commission_ledger pcl
+   WHERE pcl.earner_id = v_member_id AND pcl.status = 'approved';
+
+  SELECT COALESCE(sum(wr.requested_amount), 0)
+    INTO v_claimed
+    FROM public.withdrawal_requests wr
+   WHERE wr.member_id = v_member_id
+     AND wr.status IN ('pending', 'approved', 'paid');
+
+  v_available := GREATEST(v_unilevel + v_positional - v_claimed, 0);
+
+  IF v_available < 300 THEN
+    RAISE EXCEPTION 'A minimum combined available commission of PHP 300 is required';
+  END IF;
+  IF p_amount > v_available THEN
+    RAISE EXCEPTION 'Requested amount exceeds available commission (PHP %)', to_char(v_available, 'FM999999990.00');
+  END IF;
+
+  INSERT INTO public.withdrawal_requests (member_id, requested_amount, status)
+  VALUES (v_member_id, p_amount, 'pending')
+  RETURNING id INTO v_request_id;
+
+  RETURN v_request_id;
+END;
+$;
+
+revoke all on function public.get_member_commission_summary() from public, anon;
+revoke all on function public.request_commission_withdrawal(numeric) from public, anon;
+grant execute on function public.get_member_commission_summary() to authenticated;
+grant execute on function public.request_commission_withdrawal(numeric) to authenticated;
+
 commit;
