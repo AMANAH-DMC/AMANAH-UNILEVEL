@@ -368,7 +368,7 @@ returns void
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 declare
   v_member public.member_profiles%rowtype;
   v_window_end timestamptz;
@@ -477,7 +477,7 @@ begin
     on conflict (member_id, rank_name) do nothing;
   end if;
 end;
-$;
+$$;
 
 create or replace function public.get_manager_rank_progress()
 returns jsonb
