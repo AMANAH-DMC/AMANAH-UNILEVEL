@@ -117,7 +117,8 @@ begin
     select (date_trunc('month',now() at time zone 'Asia/Manila') - (interval '1 month' * gs))::date as month_start
     from generate_series(0,11) gs
   ), assigned as (
-    select mba.branch_id,b.branch_name,boa.operator_member_id
+    select mba.branch_id,b.branch_name,boa.operator_member_id,
+      mba.assigned_at as manager_assigned_at,boa.assigned_at as operator_assigned_at
     from public.amanah_manager_branch_assignments mba
     join public.amanah_branches b on b.id=mba.branch_id and b.status='active'
     left join public.amanah_branch_operator_assignments boa on boa.branch_id=b.id
@@ -128,6 +129,7 @@ begin
       coalesce(sum(p.total_amount),0)::numeric(14,2) as purchase_amount
     from assigned a
     join public.purchases p on p.member_id=a.operator_member_id and p.purchase_status='paid'
+      and p.created_at >= greatest(a.manager_assigned_at,a.operator_assigned_at)
     where p.created_at >= (select min(month_start) from months)::timestamp at time zone 'Asia/Manila'
       and p.created_at < ((select max(month_start) from months)+interval '1 month')::timestamp at time zone 'Asia/Manila'
     group by a.branch_id,date_trunc('month',p.created_at at time zone 'Asia/Manila')::date
