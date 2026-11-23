@@ -289,7 +289,7 @@ BEGIN
     300::numeric,
     v_available >= 300;
 END;
-$;
+$$;
 
 CREATE OR REPLACE FUNCTION public.request_commission_withdrawal(p_amount numeric)
 RETURNS uuid
@@ -356,7 +356,7 @@ BEGIN
 
   RETURN v_request_id;
 END;
-$;
+$$;
 
 revoke all on function public.get_member_commission_summary() from public, anon;
 revoke all on function public.request_commission_withdrawal(numeric) from public, anon;
@@ -484,7 +484,7 @@ returns jsonb
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 declare
   v_member public.member_profiles%rowtype;
   v_window_end timestamptz;
@@ -582,7 +582,7 @@ begin
     'rank_permanence', 'Once qualified, JMO or SMO rank is permanent.'
   );
 end;
-$;
+$$;
 
 revoke all on function public.get_manager_rank_progress() from public, anon;
 grant execute on function public.get_manager_rank_progress() to authenticated;
