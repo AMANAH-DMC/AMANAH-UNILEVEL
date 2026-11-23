@@ -24,6 +24,7 @@ type CommissionSummary = {
   eligible_to_withdraw: boolean;
 };
 
+type ManagerRankProgress = { personal_pv:number; group_pv:number; earned_rank:string; countdown_active:boolean; accumulation_ends_at:string; jmo:{personal_target:number;group_target:number;personal_progress:number;group_progress:number;qualified:boolean;qualified_at:string|null}; smo:{personal_target:number;group_target:number;personal_progress:number;group_progress:number;qualified:boolean;qualified_at:string|null} };
 type LeadershipBonusRow = { month_start: string; branch_id: string; branch_name: string; operator_count: number; paid_purchase_count: number; paid_purchase_amount: number; leadership_bonus: number };
 
 type WithdrawalRow = {
@@ -48,6 +49,7 @@ export default function ManagerDashboard({ profile, onSignOut }: { profile: Prof
   const [summary, setSummary] = useState<CommissionSummary | null>(null);
   const [history, setHistory] = useState<WithdrawalRow[]>([]);
   const [leadershipBonus, setLeadershipBonus] = useState<LeadershipBonusRow[]>([]);
+  const [rankProgress, setRankProgress] = useState<ManagerRankProgress | null>(null);
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -59,21 +61,24 @@ export default function ManagerDashboard({ profile, onSignOut }: { profile: Prof
     setLoading(true);
     setError('');
     try {
-      const [dashboardResult, summaryResult, historyResult, bonusResult] = await Promise.all([
+      const [dashboardResult, summaryResult, historyResult, bonusResult, rankResult] = await Promise.all([
         supabase.rpc('get_manager_dashboard'),
         supabase.rpc('get_member_commission_summary'),
         supabase.rpc('get_member_withdrawal_history'),
         supabase.rpc('get_manager_leadership_bonus'),
+        supabase.rpc('get_manager_rank_progress'),
       ]);
       if (dashboardResult.error) throw dashboardResult.error;
       if (summaryResult.error) throw summaryResult.error;
       if (historyResult.error) throw historyResult.error;
       if (bonusResult.error) throw bonusResult.error;
+      if (rankResult.error) throw rankResult.error;
       setDashboard(dashboardResult.data as ManagerDashboardData);
       const row = Array.isArray(summaryResult.data) ? summaryResult.data[0] : summaryResult.data;
       setSummary(row || null);
       setHistory((historyResult.data || []) as WithdrawalRow[]);
       setLeadershipBonus((bonusResult.data || []) as LeadershipBonusRow[]);
+      setRankProgress((rankResult.data || null) as ManagerRankProgress | null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load commission information.');
     } finally {
@@ -141,6 +146,14 @@ export default function ManagerDashboard({ profile, onSignOut }: { profile: Prof
         {notice && <div className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />{notice}</div>}
 
         <MonthlyActivityCard />
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-bold text-slate-900">Unilevel rank progression</h2><p className="mt-1 text-sm text-slate-500">Manager rank qualification follows the same Distributor thresholds, including paid purchase PV in your ten-level network.</p></div><div className="text-right"><p className="text-xs uppercase text-slate-500">Rank achieved</p><p className="text-xl font-black text-emerald-950">{rankProgress?.earned_rank||'Regular Member'}</p></div></div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            {(['jmo','smo'] as const).map((key)=>{const rank=rankProgress?.[key];return <article key={key} className="rounded-xl bg-slate-50 p-4"><h3 className="font-bold text-slate-900">{key.toUpperCase()} qualification</h3><p className="mt-1 text-xs text-slate-500">Personal {Number(rank?.personal_pv||0).toLocaleString('en-PH')} / {Number(rank?.personal_target||0).toLocaleString('en-PH')} PV · Group {Number(rankProgress?.group_pv||0).toLocaleString('en-PH')} / {Number(rank?.group_target||0).toLocaleString('en-PH')} PV</p><div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-emerald-700" style={{width:`${Math.min(100,Number(rank?.personal_progress||0))}%`}}/></div><p className="mt-2 text-xs text-slate-600">Personal {Number(rank?.personal_progress||0).toFixed(1)}% · Group {Number(rank?.group_progress||0).toFixed(1)}%</p><p className="mt-1 text-xs font-semibold">{rank?.qualified?'Qualified':'In progress'}</p></article>})}
+          </div>
+          {rankProgress?.accumulation_ends_at&&<p className="mt-3 text-xs text-slate-500">Qualification window ends {new Date(rankProgress.accumulation_ends_at).toLocaleDateString('en-PH')}.</p>}
+        </section>
 
         {(() => {
           const monthParts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit' }).formatToParts(new Date());
