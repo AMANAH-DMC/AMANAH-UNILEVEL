@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { RefreshCw, Wallet, CheckCircle2, AlertCircle, LogOut, Users, Network, Award, Package, UsersRound, UserRound } from 'lucide-react';
+import { RefreshCw, Wallet, CheckCircle2, AlertCircle, LogOut, Users, Network, Award, Package, UsersRound, UserRound, CircleCheck, CircleAlert } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { ProductCodeRedemption } from './ProductCodePanels';
 import DistributorNetworkExplorer from './DistributorNetworkExplorer';
@@ -21,6 +21,8 @@ type RankProgress = {
   jmo: { personal_target: number; group_target: number; personal_progress: number; group_progress: number; qualified: boolean; qualified_at: string | null; additional_rate: number };
   smo: { personal_target: number; group_target: number; personal_progress: number; group_progress: number; qualified: boolean; qualified_at: string | null; additional_rate: number };
 };
+
+type MonthlyActivationStatus = { is_active: boolean; status: 'ACTIVE' | 'INACTIVE'; is_product_activation_exempt?: boolean };
 
 type CommissionSummary = {
   unilevel_approved: number;
@@ -51,6 +53,7 @@ const money = (value: number | string | null | undefined) =>
 export default function DistributorDashboard({ profile, onSignOut }: { profile: Profile; onSignOut: () => void }) {
   const [dashboard, setDashboard] = useState<DistributorDashboardData | null>(null);
   const [summary, setSummary] = useState<CommissionSummary | null>(null);
+  const [activationStatus, setActivationStatus] = useState<MonthlyActivationStatus | null>(null);
   const [rankProgress, setRankProgress] = useState<RankProgress | null>(null);
   const [history, setHistory] = useState<WithdrawalRow[]>([]);
   const [amount, setAmount] = useState('');
@@ -65,17 +68,23 @@ export default function DistributorDashboard({ profile, onSignOut }: { profile: 
     setLoading(true);
     setError('');
     try {
-      const [dashboardResult, summaryResult, historyResult, rankResult] = await Promise.all([
+      const [dashboardResult, summaryResult, historyResult, rankResult, activationResult] = await Promise.all([
         supabase.rpc('get_distributor_dashboard'),
         supabase.rpc('get_member_commission_summary'),
         supabase.rpc('get_member_withdrawal_history'),
         supabase.rpc('get_distributor_rank_progress'),
+        supabase.rpc('get_member_monthly_activity'),
       ]);
       if (dashboardResult.error) throw dashboardResult.error;
       if (summaryResult.error) throw summaryResult.error;
       if (historyResult.error) throw historyResult.error;
       if (rankResult.error) throw rankResult.error;
       setDashboard(dashboardResult.data as DistributorDashboardData);
+      if (!activationResult.error && activationResult.data) {
+        setActivationStatus(activationResult.data as MonthlyActivationStatus);
+      } else {
+        setActivationStatus(null);
+      }
       setRankProgress(rankResult.data as RankProgress);
       const row = Array.isArray(summaryResult.data) ? summaryResult.data[0] : summaryResult.data;
       setSummary(row || null);
@@ -181,7 +190,20 @@ export default function DistributorDashboard({ profile, onSignOut }: { profile: 
             <div>
               <p className="text-xs font-bold uppercase tracking-widest text-emerald-800">AMANAH Member Portal</p>
               <h1 className="mt-1 text-2xl font-bold text-slate-900">{navigation.find((item) => item.id === activeSection)?.label}</h1>
-              <p className="text-sm text-slate-500">{profile.full_name} · {profile.member_number} · Distributor</p>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+                <span>{profile.full_name} · {profile.member_number} · Distributor</span>
+                {activationStatus && (
+                  <span
+                    role="status"
+                    aria-label={`Monthly product activation: ${activationStatus.is_active ? 'Active' : 'Inactive'}`}
+                    title={activationStatus.is_product_activation_exempt ? 'Permanently exempt from monthly product activation' : 'Monthly product activation status'}
+                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide ${activationStatus.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}
+                  >
+                    {activationStatus.is_active ? <CircleCheck className="h-3.5 w-3.5" /> : <CircleAlert className="h-3.5 w-3.5" />}
+                    {activationStatus.is_active ? 'ACTIVE' : 'INACTIVE'}
+                  </span>
+                )}
+              </div>
             </div>
             <button onClick={() => void load()} disabled={loading} className="inline-flex items-center justify-center gap-2 self-start rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 sm:self-center">
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
