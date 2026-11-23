@@ -227,6 +227,26 @@ export default function DistributorDashboard({ profile, onSignOut }: { profile: 
                   <p className="mt-2 text-xs text-slate-500">Total commission already claimed</p>
                 </article>
                 <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="flex items-center gap-2 text-slate-500"><CircleCheck className="h-4 w-4" /><span className="text-xs font-semibold uppercase tracking-wide">Product Activation</span></div>
+                  <div className="mt-3 flex items-center gap-2">
+                    {loading ? (
+                      <span className="text-xl font-extrabold text-slate-400">Checking…</span>
+                    ) : activationStatus ? (
+                      <>
+                        {activationStatus.is_active
+                          ? <CircleCheck className="h-6 w-6 text-emerald-600" />
+                          : <CircleAlert className="h-6 w-6 text-rose-600" />}
+                        <span className={`text-xl font-extrabold ${activationStatus.is_active ? 'text-emerald-700' : 'text-rose-700'}`}>
+                          {activationStatus.is_active ? 'ACTIVE' : 'INACTIVE'}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-sm font-semibold text-slate-500">Status unavailable</span>
+                    )}
+                  </div>
+                  <p className="mt-2 text-xs text-slate-500">Your current monthly product activation status</p>
+                </article>
+                <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="flex items-center gap-2 text-slate-500"><Users className="h-4 w-4" /><span className="text-xs font-semibold uppercase tracking-wide">Total Members</span></div>
                   <p className="mt-3 text-3xl font-extrabold text-emerald-950 tabular-nums">{loading ? '—' : (dashboard?.downline?.length || 0).toLocaleString('en-PH')}</p>
                   <p className="mt-1 text-xs text-slate-500">Across Levels 1–10</p>
