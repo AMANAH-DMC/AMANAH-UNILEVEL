@@ -55,7 +55,7 @@ export default function AdminOperationsManagement({ mode = 'branches' }: { mode?
       setBranches((b.data||[]) as Branch[]);setOperators((o.data||[]) as Operator[]);setStockists((s.data||[]) as Stockist[]);
       if(managerList.error)throw managerList.error; if(managerAssignmentsResult.error)throw managerAssignmentsResult.error;
       setManagers((managerList.data||[]) as Manager[]);
-      setManagerAssignments(Object.fromEntries(((managerAssignmentsResult.data||[]) as BranchManagerAssignment[]).map(row=>[row.branch_id,row]))
+      setManagerAssignments(Object.fromEntries(((managerAssignmentsResult.data||[]) as BranchManagerAssignment[]).map(row=>[row.branch_id,row])));
       if(m.error){
         setMonthlyPurchaseActivity({});
         setError(`Branch and stockist records loaded, but monthly purchase activity is unavailable: ${m.error.message}`);
