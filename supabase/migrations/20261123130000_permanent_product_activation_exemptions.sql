@@ -1,5 +1,5 @@
--- Keep designated platform and network-root accounts exempt from monthly product activation.
--- This affects the product-activation activity status only; it does not alter
+-- Keep Admin, Front Desk, and the first Root Distributor exempt from monthly product activation.
+-- This affects product-activation activity only; it does not alter
 -- account_status, purchase history, PV, rank qualification, or Unilevel rules.
 
 begin;
@@ -27,20 +27,11 @@ begin
     raise exception 'Member account required' using errcode = '42501';
   end if;
 
-  -- Permanent exemptions:
-  --   * every Admin account
-  --   * the Front Desk account/role
-  --   * the dedicated amanah-dmc login
-  --   * the first Root Distributor account
+  -- Permanent exemptions: all Admin accounts, Front Desk, and the first
+  -- Root Distributor account (amanah).
   v_is_exempt :=
     v_member.role::text in ('admin', 'front_desk')
-    or v_member.id = '8b8001d0-75d1-4792-b291-25593edd9dda'::uuid
-    or exists (
-      select 1
-      from public.member_login_usernames as login_name
-      where login_name.user_id = v_member.id
-        and login_name.username = 'amanah-dmc'
-    );
+    or v_member.id = '8b8001d0-75d1-4792-b291-25593edd9dda'::uuid;
 
   v_month_start :=
     date_trunc('month', now() at time zone 'Asia/Manila')
