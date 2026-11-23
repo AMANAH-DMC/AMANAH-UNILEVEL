@@ -1163,6 +1163,7 @@ export default function AmanahApp() {
                         onChange={(e) => setAuthForm({ ...authForm, partnershipCategory: e.target.value })}
                         className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 outline-none text-sm transition-all">
                         <option value="distributor">Distributor</option>
+                        <option value="manager">Manager</option>
                         <option value="branch_operator">Branch Operator</option>
                         <option value="mobile_stockist">Mobile Stockist</option>
                       </select>

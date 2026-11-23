@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase';
 
 type Branch = { id:string; branch_code:string; branch_name:string; address:string; contact_number:string; status:string; operator_member_id:string|null; operator_name:string|null; operator_member_number:string|null };
 type Operator = { member_id:string; member_number:string|null; full_name:string; account_status:string; branch_id:string|null; branch_name:string|null };
+type Manager = { member_id:string; member_number:string|null; full_name:string; account_status:string };
+type BranchManagerAssignment = { branch_id:string; branch_name:string; branch_status:string; manager_member_id:string|null; manager_name:string|null; manager_member_number:string|null };
 type Stockist = { member_id:string; member_number:string|null; full_name:string; account_status:string; assignment_status:string; branch_id:string|null; branch_name:string|null; service_area:string; notes:string };
 type Expense = { id:string; expense_date:string; category:string; amount:number; description:string; created_at:string; created_by_name:string; created_by_member_number:string|null; total_count:number };
 type MonthlyPurchaseActivity = { member_id:string; member_number:string|null; full_name:string; role:string; account_status:string; branch_name:string|null; purchase_count:number; purchase_pv:number; month_start:string };
@@ -15,6 +17,10 @@ export default function AdminOperationsManagement({ mode = 'branches' }: { mode?
   const [branches,setBranches]=useState<Branch[]>([]);
   const [operators,setOperators]=useState<Operator[]>([]);
   const [stockists,setStockists]=useState<Stockist[]>([]);
+  const [managers,setManagers]=useState<Manager[]>([]);
+  const [managerAssignments,setManagerAssignments]=useState<Record<string,BranchManagerAssignment>>({});
+  const [managerChoices,setManagerChoices]=useState<Record<string,string>>({});
+  const [bulkManagerId,setBulkManagerId]=useState('');
   const [monthlyPurchaseActivity,setMonthlyPurchaseActivity]=useState<Record<string,MonthlyPurchaseActivity>>({});
   const [expenses,setExpenses]=useState<Expense[]>([]);
   const [operatorChoices,setOperatorChoices]=useState<Record<string,string>>({});
@@ -37,14 +43,19 @@ export default function AdminOperationsManagement({ mode = 'branches' }: { mode?
     if(!supabase){setError('Supabase is unavailable.');return;}
     setLoading(true);setError('');
     try{
-      const [b,o,s,m]=await Promise.all([
+      const [b,o,s,m,managerList,managerAssignmentsResult]=await Promise.all([
         supabase.rpc('admin_list_branches'),
         supabase.rpc('admin_list_branch_operators'),
         supabase.rpc('admin_list_mobile_stockists'),
         supabase.rpc('admin_get_branch_stockist_monthly_purchase_activity'),
+        supabase.rpc('admin_list_managers'),
+        supabase.rpc('admin_list_branch_manager_assignments'),
       ]);
       if(b.error)throw b.error;if(o.error)throw o.error;if(s.error)throw s.error;
       setBranches((b.data||[]) as Branch[]);setOperators((o.data||[]) as Operator[]);setStockists((s.data||[]) as Stockist[]);
+      if(managerList.error)throw managerList.error; if(managerAssignmentsResult.error)throw managerAssignmentsResult.error;
+      setManagers((managerList.data||[]) as Manager[]);
+      setManagerAssignments(Object.fromEntries(((managerAssignmentsResult.data||[]) as BranchManagerAssignment[]).map(row=>[row.branch_id,row])));
       if(m.error){
         setMonthlyPurchaseActivity({});
         setError(`Branch and stockist records loaded, but monthly purchase activity is unavailable: ${m.error.message}`);
@@ -80,6 +91,21 @@ export default function AdminOperationsManagement({ mode = 'branches' }: { mode?
     catch(e){setError(e instanceof Error?e.message:'Unable to assign Branch Operator.');}
     finally{setSaving(false);}
   };
+  const assignManager=async(branchId:string)=>{
+    if(!supabase)return;const managerId=managerChoices[branchId]||managerAssignments[branchId]?.manager_member_id||'';
+    if(!managerId){setError('Select an active Manager first.');return;}
+    setSaving(true);setError('');setNotice('');
+    try{const {data,error:rpcError}=await supabase.rpc('admin_assign_manager_to_branch',{p_branch_id:branchId,p_manager_member_id:managerId});if(rpcError)throw rpcError;if(data!==true)throw new Error('Manager assignment was not confirmed.');setNotice('Manager assigned to branch.');await load();}
+    catch(e){setError(e instanceof Error?e.message:'Unable to assign Manager.');}
+    finally{setSaving(false);}
+  };
+  const assignManagerAll=async()=>{
+    if(!supabase||!bulkManagerId){setError('Select an active Manager to assign to all branches.');return;}
+    setSaving(true);setError('');setNotice('');
+    try{const {data,error:rpcError}=await supabase.rpc('admin_assign_manager_to_all_branches',{p_manager_member_id:bulkManagerId});if(rpcError)throw rpcError;setNotice(`Manager assigned to ${data||0} active branches.`);await load();}
+    catch(e){setError(e instanceof Error?e.message:'Unable to assign Manager to all branches.');}
+    finally{setSaving(false);}
+  };
   const assignStockist=async(memberId:string)=>{
     if(!supabase)return;setSaving(true);setError('');setNotice('');
     try{
@@ -106,6 +132,12 @@ export default function AdminOperationsManagement({ mode = 'branches' }: { mode?
     <div className="flex flex-wrap gap-2">{(mode === 'expenses' ? ([['expenses','Front Desk Expenses',Wallet]] as const) : ([['branches','Branches',Building2],['stockists','Mobile Stockists',Users]] as const)).map(([id,label,Icon])=><button key={id} onClick={()=>setTab(id)} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold ${tab===id?'bg-emerald-950 text-white':'border border-slate-200 bg-white text-slate-700'}`}><Icon size={16}/>{label}</button>)}</div>
 
     {tab==='branches'&&<div className="space-y-4">
+      <section className="rounded-2xl border border-indigo-200 bg-white p-4 space-y-3">
+        <h3 className="font-bold text-slate-900">Manager branch assignments</h3>
+        <p className="text-xs text-slate-500">Managers can be assigned to multiple branches. Assign a selected Manager to all active branches, or choose them individually below. Their 9% Leadership Bonus applies to paid Branch Operator purchases in assigned branches.</p>
+        <div className="flex flex-wrap items-center gap-2"><select value={bulkManagerId} onChange={e=>setBulkManagerId(e.target.value)} className="min-w-[240px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"><option value="">Select Manager for all branches</option>{managers.filter(m=>m.account_status==='active').map(m=><option key={m.member_id} value={m.member_id}>{m.full_name} · {m.member_number||'No ID'}</option>)}</select><button disabled={saving||!bulkManagerId} onClick={()=>void assignManagerAll()} className="rounded-lg bg-indigo-900 px-3 py-2 text-xs font-bold text-white disabled:opacity-40">Assign to all active branches</button></div>
+        <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-3 py-2">Branch</th><th className="px-3 py-2">Current Manager</th><th className="px-3 py-2">Assign individually</th></tr></thead><tbody className="divide-y divide-slate-100">{branches.map(b=><tr key={b.id}><td className="px-3 py-2 font-medium">{b.branch_name}<p className="text-xs text-slate-500">{b.branch_code}</p></td><td className="px-3 py-2">{managerAssignments[b.id]?.manager_name||'Unassigned'}<p className="text-xs text-slate-500">{managerAssignments[b.id]?.manager_member_number||''}</p></td><td className="px-3 py-2"><div className="flex gap-2"><select value={managerChoices[b.id]??managerAssignments[b.id]?.manager_member_id??''} onChange={e=>setManagerChoices(v=>({...v,[b.id]:e.target.value}))} className="max-w-[240px] rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs"><option value="">Choose Manager</option>{managers.filter(m=>m.account_status==='active').map(m=><option key={m.member_id} value={m.member_id}>{m.full_name} · {m.member_number||'No ID'}</option>)}</select><button disabled={saving||b.status!=='active'} onClick={()=>void assignManager(b.id)} className="rounded-lg bg-indigo-900 px-3 py-2 text-xs font-bold text-white disabled:opacity-40">Save</button></div></td></tr>)}{!loading&&branches.length===0&&<tr><td colSpan={3} className="px-3 py-6 text-center text-slate-500">No branch records found.</td></tr>}</tbody></table></div>
+      </section>
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white"><table className="w-full min-w-[1000px] text-left text-sm">
         <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Branch</th><th className="px-4 py-3">Address / Contact</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Assigned operator</th><th className="px-4 py-3">Operator qualifying paid purchases</th><th className="px-4 py-3">Assign</th></tr></thead>
         <tbody className="divide-y divide-slate-100">{branches.map(b=><tr key={b.id}>
