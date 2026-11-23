@@ -24,6 +24,8 @@ type CommissionSummary = {
   eligible_to_withdraw: boolean;
 };
 
+type LeadershipBonusRow = { month_start: string; branch_id: string; branch_name: string; operator_count: number; paid_purchase_count: number; paid_purchase_amount: number; leadership_bonus: number };
+
 type WithdrawalRow = {
   id: string;
   requested_amount: number;
@@ -45,6 +47,7 @@ export default function ManagerDashboard({ profile, onSignOut }: { profile: Prof
   const [dashboard, setDashboard] = useState<ManagerDashboardData | null>(null);
   const [summary, setSummary] = useState<CommissionSummary | null>(null);
   const [history, setHistory] = useState<WithdrawalRow[]>([]);
+  const [leadershipBonus, setLeadershipBonus] = useState<LeadershipBonusRow[]>([]);
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -56,18 +59,21 @@ export default function ManagerDashboard({ profile, onSignOut }: { profile: Prof
     setLoading(true);
     setError('');
     try {
-      const [dashboardResult, summaryResult, historyResult] = await Promise.all([
+      const [dashboardResult, summaryResult, historyResult, bonusResult] = await Promise.all([
         supabase.rpc('get_manager_dashboard'),
         supabase.rpc('get_member_commission_summary'),
         supabase.rpc('get_member_withdrawal_history'),
+        supabase.rpc('get_manager_leadership_bonus'),
       ]);
       if (dashboardResult.error) throw dashboardResult.error;
       if (summaryResult.error) throw summaryResult.error;
       if (historyResult.error) throw historyResult.error;
+      if (bonusResult.error) throw bonusResult.error;
       setDashboard(dashboardResult.data as ManagerDashboardData);
       const row = Array.isArray(summaryResult.data) ? summaryResult.data[0] : summaryResult.data;
       setSummary(row || null);
       setHistory((historyResult.data || []) as WithdrawalRow[]);
+      setLeadershipBonus((bonusResult.data || []) as LeadershipBonusRow[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load commission information.');
     } finally {
@@ -135,6 +141,25 @@ export default function ManagerDashboard({ profile, onSignOut }: { profile: Prof
         {notice && <div className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />{notice}</div>}
 
         <MonthlyActivityCard />
+
+        {(() => {
+          const monthParts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit' }).formatToParts(new Date());
+          const currentMonth = `${monthParts.find(p => p.type === 'year')?.value}-${monthParts.find(p => p.type === 'month')?.value}-01`;
+          const currentRows = leadershipBonus.filter(row => row.month_start === currentMonth);
+          const currentTotal = currentRows.reduce((sum, row) => sum + Number(row.leadership_bonus || 0), 0);
+          return <section id="leadership-bonus" className="space-y-4">
+            <article className="rounded-2xl border border-emerald-200 bg-white p-5 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div><h2 className="font-bold text-slate-900">Leadership Bonus · 9%</h2><p className="mt-1 text-sm text-slate-500">Separate from Unilevel. Paid Branch Operator purchases in branches assigned to you.</p></div>
+                <div className="text-right"><p className="text-xs font-semibold uppercase text-emerald-800">This month</p><p className="mt-1 text-2xl font-black text-emerald-950">{money(currentTotal)}</p></div>
+              </div>
+            </article>
+            <article className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-100 p-5"><h3 className="font-bold text-slate-900">Leadership Bonus history</h3><p className="mt-1 text-xs text-slate-500">Monthly branch detail · last 12 Manila calendar months · paid purchases only</p></div>
+              <table className="w-full min-w-[750px] text-left text-sm"><thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Month</th><th className="px-4 py-3">Branch</th><th className="px-4 py-3">Operators</th><th className="px-4 py-3">Paid purchases</th><th className="px-4 py-3 text-right">Purchase total</th><th className="px-4 py-3 text-right">9% bonus</th></tr></thead><tbody className="divide-y divide-slate-100">{leadershipBonus.map((row, i) => <tr key={row.branch_id + row.month_start + i}><td className="px-4 py-3">{new Date(row.month_start + 'T00:00:00').toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })}</td><td className="px-4 py-3 font-medium">{row.branch_name}</td><td className="px-4 py-3">{row.operator_count}</td><td className="px-4 py-3">{row.paid_purchase_count}</td><td className="px-4 py-3 text-right tabular-nums">{money(row.paid_purchase_amount)}</td><td className="px-4 py-3 text-right font-semibold tabular-nums">{money(row.leadership_bonus)}</td></tr>)}{!loading && leadershipBonus.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-500">No assigned branches yet. Admin must assign branches to your Manager account.</td></tr>}</tbody></table>
+            </article>
+          </section>;
+        })()}
 
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <a href="#account" className="block rounded-2xl outline-none transition hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"><article className="h-full rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
